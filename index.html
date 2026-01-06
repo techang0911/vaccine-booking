@@ -1,230 +1,145 @@
 <!DOCTYPE html>
 <html lang="zh-TW">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta charset="UTF-8">
   <title>疫苗預約系統</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
 
   <!-- Bootstrap -->
-  <link
-    href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css"
-    rel="stylesheet"
-  />
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
 
   <!-- SweetAlert -->
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
-  <!-- LIFF SDK -->
+  <!-- LIFF -->
   <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 
   <style>
-    body {
-      background: #f0f8ff;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI",
-        "Noto Sans TC", sans-serif;
-    }
+    body { background:#f3f9ff; }
     .card {
+      max-width: 480px;
+      margin: auto;
       border-radius: 16px;
-      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+      box-shadow: 0 6px 20px rgba(0,0,0,.1);
     }
     .btn-main {
-      background-color: #5cb6a9;
-      color: #fff;
-      border: none;
-    }
-    .btn-main:hover {
-      background-color: #4aa89a;
-    }
-    .small-text {
-      font-size: 0.85rem;
-      color: #666;
+      background:#4bb6a3;
+      color:#fff;
     }
   </style>
 </head>
 
 <body>
-  <div class="container py-4">
-    <div class="card mx-auto" style="max-width: 480px">
-      <div class="card-body">
-        <h5 class="text-center mb-3">💉 疫苗預約系統</h5>
+<div class="container py-4">
+  <div class="card p-4">
+    <h5 class="text-center mb-3">💉 疫苗預約</h5>
 
-        <!-- 規則頁 -->
-        <div id="rulePage">
-          <p class="small-text">
-            請閱讀並同意以下規則後繼續：
-          </p>
-          <ul class="small-text">
-            <li>每時段限額 2 位</li>
-            <li>需攜帶相關證件</li>
-            <li>逾時視同放棄</li>
-          </ul>
+    <!-- 規則 -->
+    <div id="rulePage">
+      <ul class="small">
+        <li>每時段限 2 位</li>
+        <li>請準時報到</li>
+      </ul>
 
-          <div class="form-check mb-3">
-            <input
-              class="form-check-input"
-              type="checkbox"
-              id="agreeCheck"
-            />
-            <label class="form-check-label small-text" for="agreeCheck">
-              我已閱讀並同意
-            </label>
-          </div>
-
-          <button class="btn btn-main w-100" onclick="goNext()">
-            同意並繼續
-          </button>
-        </div>
-
-        <!-- 表單頁 -->
-        <div id="formPage" style="display: none">
-          <form id="bookingForm">
-            <div class="mb-2">
-              <input
-                type="text"
-                class="form-control"
-                name="vaccine"
-                placeholder="疫苗項目"
-                required
-              />
-            </div>
-
-            <div class="row mb-2">
-              <div class="col-6">
-                <input
-                  type="date"
-                  class="form-control"
-                  name="date"
-                  required
-                />
-              </div>
-              <div class="col-6">
-                <select class="form-select" name="time" required>
-                  <option value="">選擇時段</option>
-                  <option>09:00–09:30</option>
-                  <option>09:30–10:00</option>
-                  <option>10:00–10:30</option>
-                  <option>15:30–16:00</option>
-                  <option>16:30–17:00</option>
-                  <option>19:30–20:00</option>
-                  <option>20:00–20:30</option>
-                </select>
-              </div>
-            </div>
-
-            <div class="mb-2">
-              <input
-                type="text"
-                class="form-control"
-                name="name"
-                placeholder="姓名"
-                required
-              />
-            </div>
-
-            <div class="mb-2">
-              <input
-                type="tel"
-                class="form-control"
-                name="phone"
-                placeholder="電話"
-                required
-              />
-            </div>
-
-            <div class="mb-2">
-              <input
-                type="text"
-                class="form-control"
-                name="idCard"
-                placeholder="身分證字號"
-                required
-              />
-            </div>
-
-            <div class="mb-3">
-              <input
-                type="date"
-                class="form-control"
-                name="birthday"
-                required
-              />
-            </div>
-
-            <button type="submit" class="btn btn-main w-100">
-              送出預約
-            </button>
-          </form>
-        </div>
+      <div class="form-check mb-3">
+        <input type="checkbox" class="form-check-input" id="agree">
+        <label class="form-check-label">我已閱讀並同意</label>
       </div>
+
+      <button class="btn btn-main w-100" onclick="goNext()">同意並繼續</button>
+    </div>
+
+    <!-- 表單 -->
+    <div id="formPage" style="display:none">
+      <form id="form">
+        <input class="form-control mb-2" name="vaccine" placeholder="疫苗項目" required>
+        <input class="form-control mb-2" type="date" name="date" required>
+
+        <select class="form-select mb-2" name="time" required>
+          <option value="">選擇時段</option>
+          <option>09:00–09:30</option>
+          <option>09:30–10:00</option>
+          <option>10:00–10:30</option>
+          <option>15:30–16:00</option>
+          <option>16:30–17:00</option>
+          <option>19:30–20:00</option>
+          <option>20:00–20:30</option>
+        </select>
+
+        <input class="form-control mb-2" name="name" placeholder="姓名" required>
+        <input class="form-control mb-2" name="phone" placeholder="電話" required>
+        <input class="form-control mb-2" name="idCard" placeholder="身分證" required>
+        <input class="form-control mb-3" type="date" name="birthday" required>
+
+        <button class="btn btn-main w-100" type="submit">送出預約</button>
+      </form>
     </div>
   </div>
+</div>
 
-  <script>
-    const LIFF_ID = "2008795875-tZfdoVwR";
-    const GAS_URL = "https://script.google.com/macros/s/AKfycbyzCA_IEW_RJGzTnUP3wbtG4IiCUQhrDZ8QERurrJxol0E8W3fAT4W7fO7cL6O-yQ0/exec";
+<script>
+/* === 請改這兩行 === */
+const LIFF_ID = "2008795875-tZfdoVwR";
+const GAS_EXEC_URL = "https://script.google.com/macros/s/AKfycbyzCA_IEW_RJGzTnUP3wbtG4IiCUQhrDZ8QERurrJxol0E8W3fAT4W7fO7cL6O-yQ0/exec";
+/* ================== */
 
-    let lineUid = "";
+let lineUid = "";
 
-    async function initLiff() {
-      await liff.init({ liffId: LIFF_ID });
+async function init() {
+  await liff.init({ liffId: LIFF_ID });
 
-      // ❗️只在 LINE App 內要求登入
-      if (liff.isInClient()) {
-        if (!liff.isLoggedIn()) {
-          liff.login();
-          return;
-        }
-        const profile = await liff.getProfile();
-        lineUid = profile.userId;
-      }
+  if (!liff.isInClient()) {
+    Swal.fire("請從 LINE 官方入口開啟");
+    return;
+  }
+
+  if (!liff.isLoggedIn()) {
+    liff.login();
+    return;
+  }
+
+  const profile = await liff.getProfile();
+  lineUid = profile.userId;
+}
+
+window.onload = init;
+
+function goNext() {
+  if (!document.getElementById('agree').checked) {
+    alert('請先勾選同意');
+    return;
+  }
+  document.getElementById('rulePage').style.display = 'none';
+  document.getElementById('formPage').style.display = 'block';
+}
+
+document.getElementById('form').addEventListener('submit', e => {
+  e.preventDefault();
+
+  Swal.fire({ title:'送出中', didOpen:()=>Swal.showLoading() });
+
+  const data = {};
+  new FormData(e.target).forEach((v,k)=>data[k]=v);
+  data.lineUid = lineUid;
+
+  fetch(GAS_EXEC_URL, {
+    method:'POST',
+    body: JSON.stringify(data),
+    headers:{ 'Content-Type':'application/json' }
+  })
+  .then(r=>r.json())
+  .then(res=>{
+    if(res.ok){
+      Swal.fire('完成','預約成功','success')
+        .then(()=>liff.closeWindow());
+    } else {
+      Swal.fire('錯誤',res.message,'error');
     }
-
-    window.onload = initLiff;
-
-    function goNext() {
-      if (!document.getElementById("agreeCheck").checked) {
-        alert("請先勾選同意");
-        return;
-      }
-      document.getElementById("rulePage").style.display = "none";
-      document.getElementById("formPage").style.display = "block";
-    }
-
-    document.getElementById("bookingForm").addEventListener("submit", (e) => {
-      e.preventDefault();
-
-      if (!lineUid) {
-        alert("請在 LINE 內開啟此頁面");
-        return;
-      }
-
-      Swal.fire({
-        title: "送出中...",
-        allowOutsideClick: false,
-        didOpen: () => Swal.showLoading(),
-      });
-
-      const formData = {};
-      new FormData(e.target).forEach((v, k) => (formData[k] = v));
-      formData.lineUid = lineUid;
-
-      fetch(GAS_URL, {
-        method: "POST",
-        body: JSON.stringify(formData),
-        headers: {
-          "Content-Type": "application/json",
-        },
-      })
-        .then((res) => res.json())
-        .then(() => {
-          Swal.fire("預約成功", "", "success").then(() => {
-            if (liff.isInClient()) liff.closeWindow();
-          });
-        })
-        .catch((err) => {
-          Swal.fire("送出失敗", err.message, "error");
-        });
-    });
-  </script>
+  })
+  .catch(err=>{
+    Swal.fire('送出失敗',err.message,'error');
+  });
+});
+</script>
 </body>
 </html>
