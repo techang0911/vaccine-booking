@@ -199,32 +199,35 @@
     statusBadge.innerHTML = (ok ? '<span class="okdot"></span>' : '<span class="baddot"></span>') + text;
   }
 
-  async function initLIFF(){
-    try{
-      await liff.init({ liffId: 2008829528-z2IIrBwj });
+async function initLIFF(){
+  try{
+    await liff.init({ liffId: "2008829528-z2IIrBwj" });
 
-      if (!liff.isInClient()){
-        // 不是從 LIFF Client 開（例如一般瀏覽器 / LINE 內建瀏覽器貼 GitHub Pages）
-        setStatus(false, "請從 LIFF 入口開啟");
-        Swal.fire("請從 LINE 官方入口開啟", "請點選官方帳號的圖文選單 / LIFF 連結進入。", "warning");
-        return;
-      }
-
-      if (!liff.isLoggedIn()){
-        setStatus(false, "導向登入中…");
-        liff.login();
-        return;
-      }
-
-      const profile = await liff.getProfile();
-      lineUid = profile.userId;
-      setStatus(true, "已連線 LINE（可送出）");
-
-    }catch(err){
-      setStatus(false, "LIFF 初始化失敗");
-      Swal.fire("LIFF 初始化失敗", String(err?.message || err), "error");
+    if (!liff.isInClient()){
+      setStatus(false, "請從 LIFF 入口開啟");
+      Swal.fire(
+        "請從 LINE 官方入口開啟",
+        "請點選官方帳號的圖文選單 / LIFF 連結進入。",
+        "warning"
+      );
+      return;
     }
+
+    if (!liff.isLoggedIn()){
+      liff.login();
+      return;
+    }
+
+    const profile = await liff.getProfile();
+    lineUid = profile.userId;
+    setStatus(true, "已連線 LINE（可送出）");
+
+  }catch(err){
+    setStatus(false, "LIFF 初始化失敗");
+    Swal.fire("LIFF 初始化失敗", String(err.message || err), "error");
   }
+}
+
 
   window.addEventListener("load", initLIFF);
 
