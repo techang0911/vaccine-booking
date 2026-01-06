@@ -18,6 +18,7 @@
     .content{padding:18px;}
     label{display:block;margin:12px 0 6px;font-size:13px;color:#374151;}
     input,select{width:100%;box-sizing:border-box;padding:11px 12px;border:1px solid var(--border);border-radius:12px;font-size:15px;outline:none;background:#fff;}
+    input:focus,select:focus{border-color:#93c5fd;box-shadow:0 0 0 3px rgba(59,130,246,.15);}
     .row{display:flex;gap:10px;}
     .row>div{flex:1;}
     .btn{width:100%;padding:12px 14px;border:none;border-radius:12px;background:var(--main);color:#fff;font-weight:700;font-size:15px;cursor:pointer;margin-top:16px;}
@@ -53,7 +54,7 @@
         </div>
 
         <div id="pageForm" style="display:none;">
-          <form id="form">
+          <form id="form" novalidate>
             <label>疫苗項目（名稱＋價格）</label>
             <select name="vaccineId" id="vaccineSelect" required>
               <option value="">載入中…</option>
@@ -74,13 +75,28 @@
             </div>
 
             <label>姓名</label>
-            <input name="name" placeholder="請輸入姓名" required>
+            <input name="name" placeholder="請輸入姓名" required autocomplete="name">
 
             <label>電話</label>
-            <input name="phone" placeholder="09xx-xxx-xxx" required>
+            <input
+              name="phone"
+              placeholder="0912345678"
+              required
+              inputmode="tel"
+              autocomplete="tel"
+              pattern="^09\\d{8}$"
+              title="請輸入正確手機號碼（例如 0912345678）"
+            >
 
             <label>身分證</label>
-            <input name="idCard" placeholder="A123456789" required>
+            <input
+              name="idCard"
+              placeholder="A123456789"
+              required
+              autocapitalize="characters"
+              pattern="^[A-Za-z][12]\\d{8}$"
+              title="請輸入正確身分證格式（例如 A123456789）"
+            >
 
             <label>出生日期</label>
             <input type="date" name="birthday" required>
@@ -102,6 +118,7 @@
   const pageForm  = document.getElementById("pageForm");
   const btnNext   = document.getElementById("btnNext");
 
+  const formEl = document.getElementById("form");
   const vaccineSelect = document.getElementById("vaccineSelect");
   const vaccineInfo = document.getElementById("vaccineInfo");
 
@@ -123,6 +140,15 @@
   function money(n){
     try { return "$" + Number(n).toLocaleString("zh-TW"); } catch { return "$" + n; }
   }
+
+  // 避免選到過去日期（以使用者手機當地日期為準）
+  (function setMinDate(){
+    const today = new Date();
+    const yyyy = today.getFullYear();
+    const mm = String(today.getMonth()+1).padStart(2,"0");
+    const dd = String(today.getDate()).padStart(2,"0");
+    dateInput.min = `${yyyy}-${mm}-${dd}`;
+  })();
 
   // ===== Vaccines =====
   async function loadVaccines(){
@@ -228,15 +254,15 @@
       lineUid = p.userId;
       setStatus(true, "已連線 LINE");
 
-      // 先渲染預設時段
+      // 預設時段
       renderTimeOptions(DEFAULT_TIME_GROUPS);
 
-      // 載入疫苗清單
+      // 疫苗清單
       await loadVaccines();
       vaccineSelect.value = "";
       renderVaccineInfo();
 
-      // 日期變更時，依 TimeRules 更新時段
+      // 日期變更 → 依 TimeRules 更新時段
       dateInput.addEventListener("change", () => {
         refreshTimesByDate(dateInput.value);
       });
@@ -258,23 +284,55 @@
     pageForm.style.display = "block";
   });
 
-  // ===== Submit =====
-  document.getElementById("form").addEventListener("submit", async (e) => {
+  // ===== Submit (必填檢查 + 確認框) =====
+  formEl.addEventListener("submit", async (e) => {
     e.preventDefault();
+
+    // ① required / pattern 檢查
+    if (!formEl.checkValidity()) {
+      formEl.reportValidity();
+      return;
+    }
 
     if (!liff.isInClient() || !lineUid){
       Swal.fire("請從 LINE 官方入口開啟", "目前無法取得 LINE 使用者資訊", "warning");
       return;
     }
 
+    // ② 收集資料
     const data = {};
-    new FormData(e.target).forEach((v,k)=> data[k]=v);
+    new FormData(formEl).forEach((v,k)=> data[k]=v);
     data.lineId = lineUid;
 
+    // ③ 組確認資訊
+    const vaccineText = vaccineSelect?.selectedOptions?.[0]?.textContent || data.vaccineId;
+    const dateText = data.date;
+    const timeText = data.time;
+
+    const { isConfirmed } = await Swal.fire({
+      title: "請確認預約內容",
+      icon: "question",
+      html:
+        `<div style="text-align:left;line-height:1.8">
+          <div><b>疫苗項目：</b>${vaccineText}</div>
+          <div><b>預約日期：</b>${dateText}</div>
+          <div><b>預約時段：</b>${timeText}</div>
+          <hr style="border:none;border-top:1px solid #e5e7eb;margin:10px 0;">
+          <div style="color:#6b7280;font-size:12px">
+            ⚠️ 所有疫苗皆需先經醫師評估是否適合施打
+          </div>
+        </div>`,
+      showCancelButton: true,
+      confirmButtonText: "確認送出",
+      cancelButtonText: "返回修改",
+    });
+
+    if (!isConfirmed) return;
+
+    // ④ 送出（不帶 headers，避免 preflight / Load failed）
     try{
       Swal.fire({ title:"送出中…", allowOutsideClick:false, didOpen:()=>Swal.showLoading() });
 
-      // ✅ 不帶 headers，避免 OPTIONS preflight（Load failed）
       const res = await fetch(GAS_EXEC_URL, {
         method: "POST",
         body: JSON.stringify(data),
