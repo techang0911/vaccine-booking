@@ -2,73 +2,280 @@
 <html lang="zh-TW">
 <head>
   <meta charset="UTF-8" />
-  <title>疫苗預約</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>疫苗預約</title>
+
+  <!-- LIFF SDK -->
   <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+
+  <!-- SweetAlert2 -->
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
   <style>
-    body { font-family: sans-serif; background:#f5f7fb; padding:20px; }
-    .card { max-width:420px; margin:auto; background:#fff; padding:20px; border-radius:12px; }
-    button { width:100%; padding:12px; background:#6fb98f; color:#fff; border:none; border-radius:8px; }
-    input, select { width:100%; padding:10px; margin-bottom:10px; }
+    :root{
+      --bg:#f6fbff;
+      --card:#ffffff;
+      --main:#34b7a7;
+      --main2:#2aa295;
+      --text:#1f2937;
+      --muted:#6b7280;
+      --border:#e5e7eb;
+    }
+    body{
+      margin:0;
+      font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans TC",sans-serif;
+      background:linear-gradient(180deg,var(--bg),#ffffff);
+      color:var(--text);
+      padding:18px;
+    }
+    .wrap{ max-width:520px; margin:0 auto; }
+    .card{
+      background:var(--card);
+      border:1px solid var(--border);
+      border-radius:18px;
+      box-shadow:0 10px 25px rgba(0,0,0,.08);
+      overflow:hidden;
+    }
+    .header{
+      padding:18px 18px 14px;
+      background:linear-gradient(135deg,#2c7be5, var(--main));
+      color:#fff;
+    }
+    .header h1{ margin:0; font-size:18px; }
+    .header p{ margin:6px 0 0; opacity:.9; font-size:12px; }
+    .content{ padding:18px; }
+    .badge{
+      display:inline-block;
+      background:rgba(255,255,255,.2);
+      padding:4px 10px;
+      border-radius:999px;
+      font-size:12px;
+      margin-top:10px;
+    }
+    .rules{
+      margin:0;
+      padding-left:18px;
+      color:var(--muted);
+      font-size:13px;
+      line-height:1.6;
+    }
+    .row{ display:flex; gap:10px; }
+    .row > div{ flex:1; }
+    label{ display:block; margin:12px 0 6px; font-size:13px; color:#374151; }
+    input,select{
+      width:100%;
+      box-sizing:border-box;
+      padding:11px 12px;
+      border:1px solid var(--border);
+      border-radius:12px;
+      font-size:15px;
+      outline:none;
+      background:#fff;
+    }
+    input:focus,select:focus{ border-color:#93c5fd; box-shadow:0 0 0 3px rgba(59,130,246,.15); }
+    .btn{
+      width:100%;
+      padding:12px 14px;
+      border:none;
+      border-radius:12px;
+      background:var(--main);
+      color:#fff;
+      font-weight:700;
+      font-size:15px;
+      cursor:pointer;
+      margin-top:16px;
+    }
+    .btn:hover{ background:var(--main2); }
+    .hint{ margin-top:10px; font-size:12px; color:var(--muted); }
+    .mini{
+      margin-top:10px;
+      font-size:12px;
+      color:var(--muted);
+      background:#f9fafb;
+      border:1px dashed var(--border);
+      padding:10px 12px;
+      border-radius:12px;
+      word-break:break-all;
+    }
+    .okdot{ display:inline-block; width:8px; height:8px; border-radius:99px; background:#22c55e; margin-right:6px; }
+    .baddot{ display:inline-block; width:8px; height:8px; border-radius:99px; background:#ef4444; margin-right:6px; }
   </style>
 </head>
+
 <body>
-<div class="card">
-  <h3>疫苗預約</h3>
+  <div class="wrap">
+    <div class="card">
+      <div class="header">
+        <h1>💉 疫苗預約系統</h1>
+        <p>請先同意聲明，再填寫資料送出</p>
+        <div class="badge" id="statusBadge"><span class="baddot"></span>初始化中…</div>
+      </div>
 
-  <input id="vaccine" placeholder="疫苗項目" />
-  <input id="date" type="date" />
-  <select id="time">
-    <option>09:00–09:30</option>
-    <option>09:30–10:00</option>
-    <option>10:00–10:30</option>
-    <option>15:30–16:00</option>
-    <option>16:30–17:00</option>
-    <option>19:30–20:00</option>
-    <option>20:00–20:30</option>
-  </select>
+      <div class="content">
+        <!-- Page 1: Rules -->
+        <div id="pageRules">
+          <ul class="rules">
+            <li>每時段限額（由系統判斷）</li>
+            <li>同一個 LINE 帳號僅能預約一次</li>
+            <li>請務必填寫正確資料</li>
+          </ul>
 
-  <input id="name" placeholder="姓名" />
-  <input id="phone" placeholder="電話" />
-  <input id="idCard" placeholder="身分證" />
-  <input id="birthday" type="date" />
+          <label style="margin-top:14px;">
+            <input type="checkbox" id="agree" style="width:auto; transform:scale(1.1); margin-right:8px;">
+            我已閱讀並同意上述規則
+          </label>
 
-  <button onclick="send()">送出</button>
-  <p id="msg"></p>
-</div>
+          <button class="btn" id="btnNext">同意並繼續</button>
+
+          <div class="hint">
+            若你用一般瀏覽器開啟，會顯示提示；正式使用請從 LINE 內的 LIFF 入口開啟。
+          </div>
+        </div>
+
+        <!-- Page 2: Form -->
+        <div id="pageForm" style="display:none;">
+          <form id="form">
+            <label>疫苗項目</label>
+            <input name="vaccine" placeholder="例如：流感 / HPV / 肺炎鏈球菌" required>
+
+            <div class="row">
+              <div>
+                <label>預約日期</label>
+                <input type="date" name="date" required>
+              </div>
+              <div>
+                <label>預約時段</label>
+                <select name="time" required>
+                  <option value="">請選擇</option>
+                  <option>09:00–09:30</option>
+                  <option>09:30–10:00</option>
+                  <option>10:00–10:30</option>
+                  <option>15:30–16:00</option>
+                  <option>16:30–17:00</option>
+                  <option>19:30–20:00</option>
+                  <option>20:00–20:30</option>
+                </select>
+              </div>
+            </div>
+
+            <label>姓名</label>
+            <input name="name" placeholder="請輸入姓名" required>
+
+            <label>電話</label>
+            <input name="phone" placeholder="09xx-xxx-xxx" required>
+
+            <label>身分證</label>
+            <input name="idCard" placeholder="A123456789" required>
+
+            <label>出生日期</label>
+            <input type="date" name="birthday" required>
+
+            <button class="btn" type="submit">送出預約</button>
+
+            <div class="mini" id="debugBox" style="display:none;"></div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
 
 <script>
-const GAS_URL = "https://script.google.com/macros/s/AKfycbxtA1h2KPLTuhAc6eQX4WD7g0RHwL-YYy669ZxLlYfUBdqdovmxb4S4IMsKViWzeCw/exec";
-let lineId = "";
+  // =========================
+  // ✅ 只改這兩個
+  // =========================
+  const LIFF_ID = "2008829528-z2IIrBwj"; // 你剛建立的新 LIFF ID
+  const GAS_EXEC_URL = "https://script.google.com/macros/s/AKfycbxtA1h2KPLTuhAc6eQX4WD7g0RHwL-YYy669ZxLlYfUBdqdovmxb4S4IMsKViWzeCw/exec"; // 換成你的 /exec
+  // =========================
 
-async function init() {
-  await liff.init({ liffId: "2008795875-tZfdoVwR" });
-  if (!liff.isLoggedIn()) liff.login();
-  const p = await liff.getProfile();
-  lineId = p.userId;
-}
-init();
+  let lineUid = "";
 
-async function send() {
-  const data = {
-    vaccine: vaccine.value,
-    date: date.value,
-    time: time.value,
-    name: name.value,
-    phone: phone.value,
-    idCard: idCard.value,
-    birthday: birthday.value,
-    lineId
-  };
+  const statusBadge = document.getElementById("statusBadge");
+  const pageRules = document.getElementById("pageRules");
+  const pageForm  = document.getElementById("pageForm");
+  const btnNext   = document.getElementById("btnNext");
+  const debugBox  = document.getElementById("debugBox");
 
-  const res = await fetch(GAS_URL, {
-    method: "POST",
-    body: JSON.stringify(data)
-  }).then(r => r.json());
+  function setStatus(ok, text){
+    statusBadge.innerHTML = (ok ? '<span class="okdot"></span>' : '<span class="baddot"></span>') + text;
+  }
 
-  msg.innerText = res.ok ? "預約成功" : res.msg;
-  if (res.ok) liff.closeWindow();
-}
+  async function initLIFF(){
+    try{
+      await liff.init({ liffId: 2008829528-z2IIrBwj });
+
+      if (!liff.isInClient()){
+        // 不是從 LIFF Client 開（例如一般瀏覽器 / LINE 內建瀏覽器貼 GitHub Pages）
+        setStatus(false, "請從 LIFF 入口開啟");
+        Swal.fire("請從 LINE 官方入口開啟", "請點選官方帳號的圖文選單 / LIFF 連結進入。", "warning");
+        return;
+      }
+
+      if (!liff.isLoggedIn()){
+        setStatus(false, "導向登入中…");
+        liff.login();
+        return;
+      }
+
+      const profile = await liff.getProfile();
+      lineUid = profile.userId;
+      setStatus(true, "已連線 LINE（可送出）");
+
+    }catch(err){
+      setStatus(false, "LIFF 初始化失敗");
+      Swal.fire("LIFF 初始化失敗", String(err?.message || err), "error");
+    }
+  }
+
+  window.addEventListener("load", initLIFF);
+
+  btnNext.addEventListener("click", () => {
+    if (!document.getElementById("agree").checked){
+      Swal.fire("請先勾選同意", "", "info");
+      return;
+    }
+    pageRules.style.display = "none";
+    pageForm.style.display = "block";
+  });
+
+  document.getElementById("form").addEventListener("submit", async (e) => {
+    e.preventDefault();
+
+    if (!liff.isInClient() || !lineUid){
+      Swal.fire("請從 LINE 官方入口開啟", "目前無法取得 LINE ID。", "warning");
+      return;
+    }
+
+    const data = {};
+    new FormData(e.target).forEach((v,k)=> data[k]=v);
+    data.lineId = lineUid; // 後端用 lineId（你 gs 版本是這個欄位名）
+
+    try{
+      Swal.fire({ title:"送出中…", allowOutsideClick:false, didOpen:()=>Swal.showLoading() });
+
+      const res = await fetch(GAS_EXEC_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+
+      const json = await res.json().catch(()=>null);
+
+      if (!res.ok || !json){
+        throw new Error("後端沒有回傳 JSON（請確認 GAS /exec 與權限設定）");
+      }
+
+      if (json.ok){
+        await Swal.fire("預約成功", "已完成登記", "success");
+        liff.closeWindow();
+      } else {
+        Swal.fire("送出失敗", json.msg || json.message || "未知錯誤", "error");
+      }
+    }catch(err){
+      debugBox.style.display = "block";
+      debugBox.textContent = "Debug:\n" + String(err?.message || err) + "\n\nGAS:\n" + GAS_EXEC_URL;
+      Swal.fire("送出失敗", String(err?.message || err), "error");
+    }
+  });
 </script>
 </body>
 </html>
