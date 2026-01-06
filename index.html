@@ -43,7 +43,6 @@
     }
     .header h1{ margin:0; font-size:18px; }
     .header p{ margin:6px 0 0; opacity:.9; font-size:12px; }
-    .content{ padding:18px; }
     .badge{
       display:inline-block;
       background:rgba(255,255,255,.2);
@@ -52,6 +51,7 @@
       font-size:12px;
       margin-top:10px;
     }
+    .content{ padding:18px; }
     .rules{
       margin:0;
       padding-left:18px;
@@ -96,6 +96,8 @@
       padding:10px 12px;
       border-radius:12px;
       word-break:break-all;
+      display:none;
+      white-space:pre-wrap;
     }
     .okdot{ display:inline-block; width:8px; height:8px; border-radius:99px; background:#22c55e; margin-right:6px; }
     .baddot{ display:inline-block; width:8px; height:8px; border-radius:99px; background:#ef4444; margin-right:6px; }
@@ -128,7 +130,7 @@
           <button class="btn" id="btnNext">同意並繼續</button>
 
           <div class="hint">
-            若你用一般瀏覽器開啟，會顯示提示；正式使用請從 LINE 內的 LIFF 入口開啟。
+            正式使用請從 LINE 內的 LIFF 入口開啟。
           </div>
         </div>
 
@@ -172,7 +174,7 @@
 
             <button class="btn" type="submit">送出預約</button>
 
-            <div class="mini" id="debugBox" style="display:none;"></div>
+            <div class="mini" id="debugBox"></div>
           </form>
         </div>
       </div>
@@ -183,8 +185,8 @@
   // =========================
   // ✅ 只改這兩個
   // =========================
-  const LIFF_ID = "2008829528-z2IIrBwj"; // 你剛建立的新 LIFF ID
-  const GAS_EXEC_URL = "https://script.google.com/macros/s/AKfycbxtA1h2KPLTuhAc6eQX4WD7g0RHwL-YYy669ZxLlYfUBdqdovmxb4S4IMsKViWzeCw/exec"; // 換成你的 /exec
+  const LIFF_ID = "2008829528-z2IIrBwj";
+  const GAS_EXEC_URL = "https://script.google.com/macros/s/AKfycbxtA1h2KPLTuhAc6eQX4WD7g0RHwL-YYy669ZxLlYfUBdqdovmxb4S4IMsKViWzeCw/exec";
   // =========================
 
   let lineUid = "";
@@ -199,35 +201,31 @@
     statusBadge.innerHTML = (ok ? '<span class="okdot"></span>' : '<span class="baddot"></span>') + text;
   }
 
-async function initLIFF(){
-  try{
-    await liff.init({ liffId: "2008829528-z2IIrBwj" });
+  async function initLIFF(){
+    try{
+      await liff.init({ liffId: LIFF_ID });
 
-    if (!liff.isInClient()){
-      setStatus(false, "請從 LIFF 入口開啟");
-      Swal.fire(
-        "請從 LINE 官方入口開啟",
-        "請點選官方帳號的圖文選單 / LIFF 連結進入。",
-        "warning"
-      );
-      return;
+      if (!liff.isInClient()){
+        setStatus(false, "請從 LIFF 入口開啟");
+        Swal.fire("請從 LINE 官方入口開啟", "請點選官方帳號的圖文選單 / LIFF 連結進入。", "warning");
+        return;
+      }
+
+      if (!liff.isLoggedIn()){
+        setStatus(false, "導向登入中…");
+        liff.login();
+        return;
+      }
+
+      const profile = await liff.getProfile();
+      lineUid = profile.userId;
+      setStatus(true, "已連線 LINE（可送出）");
+
+    }catch(err){
+      setStatus(false, "LIFF 初始化失敗");
+      Swal.fire("LIFF 初始化失敗", String(err?.message || err), "error");
     }
-
-    if (!liff.isLoggedIn()){
-      liff.login();
-      return;
-    }
-
-    const profile = await liff.getProfile();
-    lineUid = profile.userId;
-    setStatus(true, "已連線 LINE（可送出）");
-
-  }catch(err){
-    setStatus(false, "LIFF 初始化失敗");
-    Swal.fire("LIFF 初始化失敗", String(err.message || err), "error");
   }
-}
-
 
   window.addEventListener("load", initLIFF);
 
@@ -244,39 +242,42 @@ async function initLIFF(){
     e.preventDefault();
 
     if (!liff.isInClient() || !lineUid){
-      Swal.fire("請從 LINE 官方入口開啟", "目前無法取得 LINE ID。", "warning");
+      Swal.fire("請從 LINE 官方入口開啟", "目前無法取得 LINE 使用者資訊", "warning");
       return;
     }
 
     const data = {};
     new FormData(e.target).forEach((v,k)=> data[k]=v);
-    data.lineId = lineUid; // 後端用 lineId（你 gs 版本是這個欄位名）
+    data.lineId = lineUid;
 
     try{
       Swal.fire({ title:"送出中…", allowOutsideClick:false, didOpen:()=>Swal.showLoading() });
 
+      // ✅ 重點：不帶 headers，避免 OPTIONS preflight → Load failed
       const res = await fetch(GAS_EXEC_URL, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
+        redirect: "follow",
+        cache: "no-store",
       });
 
-      const json = await res.json().catch(()=>null);
-
-      if (!res.ok || !json){
-        throw new Error("後端沒有回傳 JSON（請確認 GAS /exec 與權限設定）");
-      }
+      const json = await res.json();
 
       if (json.ok){
-        await Swal.fire("預約成功", "已完成登記", "success");
+        await Swal.fire("預約成功", "資料已送出", "success");
         liff.closeWindow();
       } else {
         Swal.fire("送出失敗", json.msg || json.message || "未知錯誤", "error");
       }
+
     }catch(err){
       debugBox.style.display = "block";
-      debugBox.textContent = "Debug:\n" + String(err?.message || err) + "\n\nGAS:\n" + GAS_EXEC_URL;
-      Swal.fire("送出失敗", String(err?.message || err), "error");
+      debugBox.textContent =
+        "Debug:\n" + String(err?.message || err) +
+        "\n\nGAS:\n" + GAS_EXEC_URL;
+
+      Swal.fire("Load failed", "無法連線後端，請確認 GAS /exec 已正確部署且存取=任何人", "error");
+      console.error(err);
     }
   });
 </script>
