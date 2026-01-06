@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>疫苗預約</title>
+
+  <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+  <style>
+    body {
+      font-family: "Noto Sans TC", sans-serif;
+      background: #f2f7f5;
+      padding: 16px;
+    }
+    .card {
+      max-width: 420px;
+      margin: auto;
+      background: white;
+      border-radius: 16px;
+      padding: 20px;
+      box-shadow: 0 8px 20px rgba(0,0,0,.08);
+    }
+    h2 {
+      text-align: center;
+      margin-bottom: 16px;
+    }
+    label {
+      font-size: 14px;
+      margin-top: 12px;
+      display: block;
+    }
+    input, select, button {
+      width: 100%;
+      padding: 10px;
+      margin-top: 6px;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+      font-size: 15px;
+    }
+    button {
+      margin-top: 20px;
+      background: #5cbdb9;
+      color: white;
+      border: none;
+      font-weight: bold;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="card">
+    <h2>疫苗預約</h2>
+
+    <label>預約日期</label>
+    <input type="date" id="date"/>
+
+    <label>預約時段</label>
+    <select id="time">
+      <option value="">請先選日期</option>
+    </select>
+
+    <label>疫苗項目</label>
+    <input id="vaccine"/>
+
+    <label>姓名</label>
+    <input id="name"/>
+
+    <label>電話</label>
+    <input id="phone"/>
+
+    <label>身分證</label>
+    <input id="idCard"/>
+
+    <label>出生日期</label>
+    <input type="date" id="birthday"/>
+
+    <button onclick="submitForm()">送出預約</button>
+  </div>
+
+<script>
+const GAS_URL = "請貼你的 GAS /exec 網址";
+const LIFF_ID = "2008795875-tZfdoVwR";
+let lineId = "";
+
+liff.init({ liffId: LIFF_ID }).then(() => {
+  if (!liff.isLoggedIn()) liff.login();
+  else return liff.getProfile();
+}).then(p => {
+  if (p) lineId = p.userId;
+});
+
+document.getElementById("date").addEventListener("change", loadSlots);
+
+function loadSlots() {
+  const select = document.getElementById("time");
+  select.innerHTML = "";
+  ["09:00–09:30","09:30–10:00","10:00–10:30",
+   "15:30–16:00","16:30–17:00",
+   "19:30–20:00","20:00–20:30"
+  ].forEach(t => {
+    const opt = document.createElement("option");
+    opt.value = t;
+    opt.textContent = t;
+    select.appendChild(opt);
+  });
+}
+
+function submitForm() {
+  const data = {
+    date: date.value,
+    time: time.value,
+    vaccine: vaccine.value,
+    name: name.value,
+    phone: phone.value,
+    idCard: idCard.value,
+    birthday: birthday.value,
+    lineId: lineId
+  };
+
+  Swal.showLoading();
+  fetch(GAS_URL, {
+    method: "POST",
+    body: JSON.stringify(data)
+  })
+  .then(r => r.json())
+  .then(res => {
+    if (res.status === "success") {
+      Swal.fire("預約成功");
+      liff.closeWindow();
+    } else {
+      Swal.fire(res.message || "失敗");
+    }
+  });
+}
+</script>
+</body>
+</html>
