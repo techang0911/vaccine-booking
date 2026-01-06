@@ -4,8 +4,13 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>疫苗預約</title>
+
+  <!-- LIFF SDK -->
   <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+
+  <!-- SweetAlert2 -->
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
   <style>
     :root{--bg:#f6fbff;--card:#fff;--main:#34b7a7;--main2:#2aa295;--muted:#6b7280;--border:#e5e7eb;}
     body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans TC",sans-serif;background:linear-gradient(180deg,var(--bg),#fff);padding:18px;}
@@ -29,6 +34,7 @@
     .baddot{display:inline-block;width:8px;height:8px;border-radius:99px;background:#ef4444;margin-right:6px;}
   </style>
 </head>
+
 <body>
   <div class="wrap">
     <div class="card">
@@ -39,6 +45,7 @@
       </div>
 
       <div class="content">
+        <!-- Page 1 -->
         <div id="pageRules">
           <div class="mini">・每時段限額（系統判斷）
 ・同一個 LINE 帳號僅能預約一次
@@ -53,6 +60,7 @@
           <div class="muted">正式使用請從 LINE 內的 LIFF 入口開啟。</div>
         </div>
 
+        <!-- Page 2 -->
         <div id="pageForm" style="display:none;">
           <form id="form" novalidate>
             <label>疫苗項目（名稱＋價格）</label>
@@ -78,14 +86,13 @@
             <input name="name" placeholder="請輸入姓名" required autocomplete="name">
 
             <label>電話</label>
+            <!-- ✅ 只必填，不做格式限制 -->
             <input
               name="phone"
-              placeholder="請輸入10碼電話號碼"
+              placeholder="請輸入聯絡電話"
               required
-              inputmode="numeric"
+              inputmode="tel"
               autocomplete="tel"
-              pattern="^\\d{10}$"
-              title="請輸入 10 碼數字電話號碼"
             >
 
             <label>身分證</label>
@@ -104,6 +111,7 @@
             <button class="btn" type="submit">送出預約</button>
           </form>
         </div>
+
       </div>
     </div>
   </div>
@@ -141,7 +149,7 @@
     try { return "$" + Number(n).toLocaleString("zh-TW"); } catch { return "$" + n; }
   }
 
-  // 避免選到過去日期（以使用者手機當地日期為準）
+  // 避免選到過去日期（以使用者裝置日期為準）
   (function setMinDate(){
     const today = new Date();
     const yyyy = today.getFullYear();
@@ -155,7 +163,6 @@
     const url = GAS_EXEC_URL + "?action=vaccines";
     const res = await fetch(url, { method:"GET", cache:"no-store" });
     const json = await res.json();
-
     if (!json.ok) throw new Error(json.msg || "疫苗清單讀取失敗");
 
     vaccineMap.clear();
@@ -284,11 +291,11 @@
     pageForm.style.display = "block";
   });
 
-  // ===== Submit (必填檢查 + 確認框) =====
+  // ===== Submit (必填檢查 + 確認框 + 成功畫面 + LINE 回傳摘要) =====
   formEl.addEventListener("submit", async (e) => {
     e.preventDefault();
 
-    // ① required / pattern 檢查
+    // required / pattern 檢查
     if (!formEl.checkValidity()) {
       formEl.reportValidity();
       return;
@@ -299,24 +306,22 @@
       return;
     }
 
-    // ② 收集資料
+    // 收集資料
     const data = {};
     new FormData(formEl).forEach((v,k)=> data[k]=v);
     data.lineId = lineUid;
 
-    // ③ 組確認資訊
     const vaccineText = vaccineSelect?.selectedOptions?.[0]?.textContent || data.vaccineId;
-    const dateText = data.date;
-    const timeText = data.time;
 
+    // 送出前確認框（疫苗/日期/時間）
     const { isConfirmed } = await Swal.fire({
       title: "請確認預約內容",
       icon: "question",
       html:
-        `<div style="text-align:left;line-height:1.8">
-          <div><b>疫苗項目：</b>${vaccineText}</div>
-          <div><b>預約日期：</b>${dateText}</div>
-          <div><b>預約時段：</b>${timeText}</div>
+        `<div style="text-align:left;line-height:1.9">
+          <div><b>預約疫苗：</b>${vaccineText}</div>
+          <div><b>預約日期：</b>${data.date}</div>
+          <div><b>預約時間：</b>${data.time}</div>
           <hr style="border:none;border-top:1px solid #e5e7eb;margin:10px 0;">
           <div style="color:#6b7280;font-size:12px">
             ⚠️ 所有疫苗皆需先經醫師評估是否適合施打
@@ -329,7 +334,7 @@
 
     if (!isConfirmed) return;
 
-    // ④ 送出（不帶 headers，避免 preflight / Load failed）
+    // 送出（不帶 headers，避免 preflight / Load failed）
     try{
       Swal.fire({ title:"送出中…", allowOutsideClick:false, didOpen:()=>Swal.showLoading() });
 
@@ -343,7 +348,49 @@
       const json = await res.json();
 
       if (json.ok){
-        await Swal.fire("預約成功", "資料已送出", "success");
+        // 要回傳與顯示的摘要
+        const summary =
+`✅ 預約成功
+姓名：${data.name}
+生日：${data.birthday}
+電話：${data.phone}
+
+疫苗：${vaccineText}
+日期：${data.date}
+時間：${data.time}
+
+提醒：請攜帶健保卡、現金；國小以下孩童需攜帶兒童手冊
+⚠️ 所有疫苗皆需先經醫師評估是否適合施打`;
+
+        // 回傳到 LINE（失敗不影響成功）
+        try{
+          await liff.sendMessages([{ type:"text", text: summary }]);
+        }catch(e){
+          console.error("sendMessages failed:", e);
+        }
+
+        // 成功畫面（你指定的資訊）
+        await Swal.fire({
+          title: "預約成功",
+          icon: "success",
+          html:
+            `<div style="text-align:left;line-height:1.9">
+              <div><b>姓名：</b>${data.name}</div>
+              <div><b>出生年月日：</b>${data.birthday}</div>
+              <div><b>電話號碼：</b>${data.phone}</div>
+              <hr style="border:none;border-top:1px solid #e5e7eb;margin:10px 0;">
+              <div><b>預約疫苗：</b>${vaccineText}</div>
+              <div><b>預約日期：</b>${data.date}</div>
+              <div><b>預約時間：</b>${data.time}</div>
+              <hr style="border:none;border-top:1px solid #e5e7eb;margin:10px 0;">
+              <div style="color:#6b7280;font-size:12px">
+                提醒：請攜帶健保卡、現金；國小以下孩童需攜帶兒童手冊<br/>
+                ⚠️ 所有疫苗皆需先經醫師評估是否適合施打
+              </div>
+            </div>`,
+          confirmButtonText: "關閉",
+        });
+
         liff.closeWindow();
       } else {
         Swal.fire("送出失敗", json.msg || json.message || "未知錯誤", "error");
