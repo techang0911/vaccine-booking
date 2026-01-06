@@ -1,145 +1,74 @@
 <!DOCTYPE html>
 <html lang="zh-TW">
 <head>
-  <meta charset="UTF-8">
-  <title>疫苗預約系統</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-
-  <!-- Bootstrap -->
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-
-  <!-- SweetAlert -->
-  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-
-  <!-- LIFF -->
+  <meta charset="UTF-8" />
+  <title>疫苗預約</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
-
   <style>
-    body { background:#f3f9ff; }
-    .card {
-      max-width: 480px;
-      margin: auto;
-      border-radius: 16px;
-      box-shadow: 0 6px 20px rgba(0,0,0,.1);
-    }
-    .btn-main {
-      background:#4bb6a3;
-      color:#fff;
-    }
+    body { font-family: sans-serif; background:#f5f7fb; padding:20px; }
+    .card { max-width:420px; margin:auto; background:#fff; padding:20px; border-radius:12px; }
+    button { width:100%; padding:12px; background:#6fb98f; color:#fff; border:none; border-radius:8px; }
+    input, select { width:100%; padding:10px; margin-bottom:10px; }
   </style>
 </head>
-
 <body>
-<div class="container py-4">
-  <div class="card p-4">
-    <h5 class="text-center mb-3">💉 疫苗預約</h5>
+<div class="card">
+  <h3>疫苗預約</h3>
 
-    <!-- 規則 -->
-    <div id="rulePage">
-      <ul class="small">
-        <li>每時段限 2 位</li>
-        <li>請準時報到</li>
-      </ul>
+  <input id="vaccine" placeholder="疫苗項目" />
+  <input id="date" type="date" />
+  <select id="time">
+    <option>09:00–09:30</option>
+    <option>09:30–10:00</option>
+    <option>10:00–10:30</option>
+    <option>15:30–16:00</option>
+    <option>16:30–17:00</option>
+    <option>19:30–20:00</option>
+    <option>20:00–20:30</option>
+  </select>
 
-      <div class="form-check mb-3">
-        <input type="checkbox" class="form-check-input" id="agree">
-        <label class="form-check-label">我已閱讀並同意</label>
-      </div>
+  <input id="name" placeholder="姓名" />
+  <input id="phone" placeholder="電話" />
+  <input id="idCard" placeholder="身分證" />
+  <input id="birthday" type="date" />
 
-      <button class="btn btn-main w-100" onclick="goNext()">同意並繼續</button>
-    </div>
-
-    <!-- 表單 -->
-    <div id="formPage" style="display:none">
-      <form id="form">
-        <input class="form-control mb-2" name="vaccine" placeholder="疫苗項目" required>
-        <input class="form-control mb-2" type="date" name="date" required>
-
-        <select class="form-select mb-2" name="time" required>
-          <option value="">選擇時段</option>
-          <option>09:00–09:30</option>
-          <option>09:30–10:00</option>
-          <option>10:00–10:30</option>
-          <option>15:30–16:00</option>
-          <option>16:30–17:00</option>
-          <option>19:30–20:00</option>
-          <option>20:00–20:30</option>
-        </select>
-
-        <input class="form-control mb-2" name="name" placeholder="姓名" required>
-        <input class="form-control mb-2" name="phone" placeholder="電話" required>
-        <input class="form-control mb-2" name="idCard" placeholder="身分證" required>
-        <input class="form-control mb-3" type="date" name="birthday" required>
-
-        <button class="btn btn-main w-100" type="submit">送出預約</button>
-      </form>
-    </div>
-  </div>
+  <button onclick="send()">送出</button>
+  <p id="msg"></p>
 </div>
 
 <script>
-/* === 請改這兩行 === */
-const LIFF_ID = "2008795875-tZfdoVwR";
-const GAS_EXEC_URL = "https://script.google.com/macros/s/AKfycbyzCA_IEW_RJGzTnUP3wbtG4IiCUQhrDZ8QERurrJxol0E8W3fAT4W7fO7cL6O-yQ0/exec";
-/* ================== */
-
-let lineUid = "";
+const GAS_URL = "https://script.google.com/macros/s/AKfycbxtA1h2KPLTuhAc6eQX4WD7g0RHwL-YYy669ZxLlYfUBdqdovmxb4S4IMsKViWzeCw/exec";
+let lineId = "";
 
 async function init() {
-  await liff.init({ liffId: LIFF_ID });
-
-  if (!liff.isInClient()) {
-    Swal.fire("請從 LINE 官方入口開啟");
-    return;
-  }
-
-  if (!liff.isLoggedIn()) {
-    liff.login();
-    return;
-  }
-
-  const profile = await liff.getProfile();
-  lineUid = profile.userId;
+  await liff.init({ liffId: "2008795875-tZfdoVwR" });
+  if (!liff.isLoggedIn()) liff.login();
+  const p = await liff.getProfile();
+  lineId = p.userId;
 }
+init();
 
-window.onload = init;
+async function send() {
+  const data = {
+    vaccine: vaccine.value,
+    date: date.value,
+    time: time.value,
+    name: name.value,
+    phone: phone.value,
+    idCard: idCard.value,
+    birthday: birthday.value,
+    lineId
+  };
 
-function goNext() {
-  if (!document.getElementById('agree').checked) {
-    alert('請先勾選同意');
-    return;
-  }
-  document.getElementById('rulePage').style.display = 'none';
-  document.getElementById('formPage').style.display = 'block';
+  const res = await fetch(GAS_URL, {
+    method: "POST",
+    body: JSON.stringify(data)
+  }).then(r => r.json());
+
+  msg.innerText = res.ok ? "預約成功" : res.msg;
+  if (res.ok) liff.closeWindow();
 }
-
-document.getElementById('form').addEventListener('submit', e => {
-  e.preventDefault();
-
-  Swal.fire({ title:'送出中', didOpen:()=>Swal.showLoading() });
-
-  const data = {};
-  new FormData(e.target).forEach((v,k)=>data[k]=v);
-  data.lineUid = lineUid;
-
-  fetch(GAS_EXEC_URL, {
-    method:'POST',
-    body: JSON.stringify(data),
-    headers:{ 'Content-Type':'application/json' }
-  })
-  .then(r=>r.json())
-  .then(res=>{
-    if(res.ok){
-      Swal.fire('完成','預約成功','success')
-        .then(()=>liff.closeWindow());
-    } else {
-      Swal.fire('錯誤',res.message,'error');
-    }
-  })
-  .catch(err=>{
-    Swal.fire('送出失敗',err.message,'error');
-  });
-});
 </script>
 </body>
 </html>
