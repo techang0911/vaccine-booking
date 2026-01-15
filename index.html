@@ -1,404 +1,561 @@
-<!DOCTYPE html>
-<html lang="zh-TW">
+<!doctype html>
+<html lang="zh-Hant">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>疫苗預約</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>疫苗預約登記</title>
 
   <!-- LIFF SDK -->
   <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
-
   <!-- SweetAlert2 -->
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
   <style>
-    :root{--bg:#f6fbff;--card:#fff;--main:#34b7a7;--main2:#2aa295;--muted:#6b7280;--border:#e5e7eb;}
-    body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans TC",sans-serif;background:linear-gradient(180deg,var(--bg),#fff);padding:18px;}
-    .wrap{max-width:520px;margin:0 auto;}
-    .card{background:var(--card);border:1px solid var(--border);border-radius:18px;box-shadow:0 10px 25px rgba(0,0,0,.08);overflow:hidden;}
-    .header{padding:18px;background:linear-gradient(135deg,#2c7be5,var(--main));color:#fff;}
-    .header h1{margin:0;font-size:18px;}
-    .header p{margin:6px 0 0;opacity:.9;font-size:12px;}
-    .badge{display:inline-block;background:rgba(255,255,255,.2);padding:4px 10px;border-radius:999px;font-size:12px;margin-top:10px;}
-    .content{padding:18px;}
-    label{display:block;margin:12px 0 6px;font-size:13px;color:#374151;}
-    input,select{width:100%;box-sizing:border-box;padding:11px 12px;border:1px solid var(--border);border-radius:12px;font-size:15px;outline:none;background:#fff;}
-    input:focus,select:focus{border-color:#93c5fd;box-shadow:0 0 0 3px rgba(59,130,246,.15);}
-    .row{display:flex;gap:10px;}
-    .row>div{flex:1;}
-    .btn{width:100%;padding:12px 14px;border:none;border-radius:12px;background:var(--main);color:#fff;font-weight:700;font-size:15px;cursor:pointer;margin-top:16px;}
-    .btn:hover{background:var(--main2);}
-    .mini{margin-top:12px;font-size:13px;color:#111827;background:#f9fafb;border:1px solid var(--border);padding:12px;border-radius:12px;white-space:pre-wrap;}
-    .muted{color:var(--muted);font-size:12px;margin-top:6px;}
-    .okdot{display:inline-block;width:8px;height:8px;border-radius:99px;background:#22c55e;margin-right:6px;}
-    .baddot{display:inline-block;width:8px;height:8px;border-radius:99px;background:#ef4444;margin-right:6px;}
+    :root{--gap:12px}
+    body{font-family:system-ui,-apple-system,"Segoe UI",Roboto,"Noto Sans TC",sans-serif;background:#f6f7fb;margin:0;padding:18px;color:#111}
+    .wrap{max-width:720px;margin:0 auto}
+    .card{background:#fff;border-radius:14px;box-shadow:0 6px 20px rgba(0,0,0,.07);padding:18px}
+    h1{font-size:20px;margin:0 0 12px}
+    .hint{font-size:13px;color:#555;line-height:1.5;margin:8px 0 0}
+    .status{font-size:13px;color:#0b6; margin:8px 0 0}
+    .status.bad{color:#c00}
+
+    .form-group{margin-top:12px}
+    label{display:block;font-size:13px;color:#333;margin-bottom:6px}
+    input,select,textarea{width:100%;box-sizing:border-box;padding:12px;border:1px solid #d6d9e0;border-radius:12px;font-size:15px;background:#fff;outline:none}
+    input:focus,select:focus,textarea:focus{border-color:#7aa7ff;box-shadow:0 0 0 3px rgba(122,167,255,.18)}
+    textarea{min-height:84px;resize:vertical}
+
+    .two-col{display:grid;grid-template-columns:1fr 1fr;gap:var(--gap)}
+    @media (max-width:640px){.two-col{grid-template-columns:1fr}}
+
+    .box{background:#f3f6ff;border:1px solid #d7e2ff;border-radius:12px;padding:12px;margin-top:12px}
+    .box b{display:block;margin-bottom:6px}
+    .row{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}
+    .btn{flex:1;min-width:140px;border:0;border-radius:12px;padding:12px 14px;font-size:15px;cursor:pointer}
+    .btn.primary{background:#1b66ff;color:#fff}
+    .btn.ghost{background:#eef2ff;color:#1b66ff}
+    .btn.danger{background:#ffecec;color:#b30000}
+    .btn:disabled{opacity:.55;cursor:not-allowed}
+
+    .divider{height:1px;background:#eee;margin:16px 0}
+
+    .times{display:block}
+    .times .group{margin-top:10px}
+    .times .group-title{font-size:13px;color:#333;margin-bottom:6px;font-weight:700}
+    .times .chips{display:flex;flex-wrap:wrap;gap:8px}
+    .chip{padding:8px 10px;border-radius:999px;border:1px solid #d6d9e0;background:#fff;cursor:pointer;font-size:13px}
+    .chip.active{border-color:#1b66ff;box-shadow:0 0 0 3px rgba(27,102,255,.12)}
+    .chip.disabled{opacity:.45;cursor:not-allowed}
+    .small{font-size:12px;color:#666;margin-top:6px}
+    .req{color:#c00}
   </style>
 </head>
 
 <body>
   <div class="wrap">
     <div class="card">
-      <div class="header">
-        <h1>💉 疫苗預約系統</h1>
-        <p>請先同意聲明，再填寫資料送出</p>
-        <div class="badge" id="statusBadge"><span class="baddot"></span>初始化中…</div>
+      <h1>疫苗預約登記</h1>
+      <div id="clientWarn" class="hint"></div>
+      <div id="status" class="status"></div>
+
+      <div class="box">
+        <b>提醒</b>
+        <div class="hint">所有疫苗施打皆需先由醫師評估。請攜帶健保卡，並準備現金。國小以下孩童請攜帶兒童健康手冊。</div>
       </div>
 
-      <div class="content">
-        <!-- Page 1 -->
-        <div id="pageRules">
-          <div class="mini">・每時段限額（系統判斷）
-・同一個 LINE 帳號僅能預約一次
-・⚠️ 所有疫苗皆需先經醫師評估是否適合施打</div>
+      <div class="divider"></div>
 
-          <label style="margin-top:14px;">
-            <input type="checkbox" id="agree" style="width:auto;transform:scale(1.1);margin-right:8px;">
-            我已閱讀並同意上述規則
-          </label>
-
-          <button class="btn" id="btnNext">同意並繼續</button>
-          <div class="muted">正式使用請從 LINE 內的 LIFF 入口開啟。</div>
+      <form id="form">
+        <!-- 基本資料 -->
+        <div class="two-col">
+          <div class="form-group">
+            <label for="name">姓名 <span class="req">*</span></label>
+            <input id="name" name="name" type="text" required autocomplete="name" />
+          </div>
+          <div class="form-group">
+            <label for="phone">電話 <span class="req">*</span></label>
+            <input id="phone" name="phone" type="tel" required placeholder="例如：0912345678" />
+          </div>
         </div>
 
-        <!-- Page 2 -->
-        <div id="pageForm" style="display:none;">
-          <form id="form" novalidate>
-            <label>疫苗項目（名稱＋價格）</label>
-            <select name="vaccineId" id="vaccineSelect" required>
-              <option value="">載入中…</option>
-            </select>
-
-            <div id="vaccineInfo" class="mini" style="display:none;"></div>
-
-            <div class="row">
-              <div>
-                <label>預約日期</label>
-                <input type="date" name="date" id="dateInput" required>
-                <div class="muted">若該日有設定特殊假期（TimeRules），時段會自動更新。</div>
-              </div>
-              <div>
-                <label>預約時段（上午 / 下午 / 晚上）</label>
-                <select name="time" id="timeSelect" required></select>
-              </div>
-            </div>
-
-            <label>姓名</label>
-            <input name="name" placeholder="請輸入姓名" required autocomplete="name">
-
-            <label>電話</label>
-            <!-- ✅ 只必填，不做格式限制 -->
-            <input
-              name="phone"
-              placeholder="請輸入聯絡電話"
-              required
-              inputmode="tel"
-              autocomplete="tel"
-            >
-
-            <label>身分證</label>
-            <input
-              name="idCard"
-              placeholder="A123456789"
-              required
-              autocapitalize="characters"
-              pattern="^[A-Za-z][12]\\d{8}$"
-              title="請輸入正確身分證格式（例如 A123456789）"
-            >
-
-            <label>出生日期</label>
-            <input type="date" name="birthday" required>
-
-            <button class="btn" type="submit">送出預約</button>
-          </form>
+        <div class="two-col">
+          <div class="form-group">
+            <label for="birthday">出生年月日 <span class="req">*</span></label>
+            <input id="birthday" name="birthday" type="date" required />
+          </div>
+          <div class="form-group">
+            <label for="idCard">身分證字號 <span class="req">*</span></label>
+            <!-- ✅ 不做格式限制：只有 required -->
+            <input id="idCard" name="idCard" type="text" required />
+            <div class="small">（不限制格式，請正確填寫即可）</div>
+          </div>
         </div>
 
+        <!-- 疫苗選擇 -->
+        <div class="form-group">
+          <label for="vaccineId">預約疫苗 <span class="req">*</span></label>
+          <select id="vaccineId" name="vaccineId" required>
+            <option value="">載入中…</option>
+          </select>
+        </div>
+
+        <div id="vaccineInfo" class="box" style="display:none;">
+          <b>疫苗資訊</b>
+          <div id="vaccineInfoText" class="hint"></div>
+        </div>
+
+        <!-- ✅ 日期 / 時段分行：不擠 -->
+        <div class="form-group">
+          <label for="date">預約日期 <span class="req">*</span></label>
+          <input id="date" name="date" type="date" required />
+          <div class="small">可預約範圍：今天起第 3 天 ～ 第 27 天（含）</div>
+        </div>
+
+        <div class="form-group">
+          <label>預約時段 <span class="req">*</span></label>
+          <div id="timeGroups" class="times"></div>
+          <select id="time" name="time" required style="display:none;"></select>
+          <div class="small">請先選日期，再選時段。</div>
+        </div>
+
+        <div class="row">
+          <button id="btnSubmit" class="btn primary" type="submit">送出預約</button>
+          <button id="btnMy" class="btn ghost" type="button">查看我的預約</button>
+          <button id="btnCancel" class="btn danger" type="button" style="display:none;">取消我的預約</button>
+        </div>
+      </form>
+
+      <div id="myBox" class="box" style="display:none;">
+        <b>我的預約</b>
+        <div id="myText" class="hint"></div>
       </div>
     </div>
   </div>
 
 <script>
-  // ✅ 只改這兩個
-  const LIFF_ID = "2008829528-z2IIrBwj";
-  const GAS_EXEC_URL = "https://script.google.com/macros/s/AKfycbxtA1h2KPLTuhAc6eQX4WD7g0RHwL-YYy669ZxLlYfUBdqdovmxb4S4IMsKViWzeCw/exec";
+/** =============================
+ * 你要改的只有這兩個：
+ * ============================= */
+const LIFF_ID = "2008829528-z2IIrBwj"; // 例如：2008829528-z2IIrBwj
+const GAS_EXEC_URL = "https://script.google.com/macros/s/AKfycbxtA1h2KPLTuhAc6eQX4WD7g0RHwL-YYy669ZxLlYfUBdqdovmxb4S4IMsKViWzeCw/exec"; // 例如：https://script.google.com/macros/s/xxxxx/exec
 
-  const statusBadge = document.getElementById("statusBadge");
-  const pageRules = document.getElementById("pageRules");
-  const pageForm  = document.getElementById("pageForm");
-  const btnNext   = document.getElementById("btnNext");
+/** =============================
+ * 預設時段（若 TimeRules 該日沒有設定，就用這組）
+ * 你可依需求調整
+ * ============================= */
+const DEFAULT_TIME_GROUPS = {
+  "上午": ["09:00","09:30","10:00","10:30","11:00","11:30"],
+  "下午": ["14:00","14:30","15:00","15:30","16:00","16:30"],
+  "晚上": ["18:30","19:00","19:30","20:00"]
+};
 
-  const formEl = document.getElementById("form");
-  const vaccineSelect = document.getElementById("vaccineSelect");
-  const vaccineInfo = document.getElementById("vaccineInfo");
+let lineUid = "";
+let vaccines = []; // {vaccineId,name,price,note}
 
-  const timeSelect = document.getElementById("timeSelect");
-  const dateInput = document.getElementById("dateInput");
+/** =============================
+ * 小工具
+ * ============================= */
+function setStatus(ok, msg){
+  const el = document.getElementById("status");
+  el.className = "status" + (ok ? "" : " bad");
+  el.textContent = msg || "";
+}
 
-  let lineUid = "";
-  let vaccineMap = new Map(); // vaccineId -> {name, price, note}
+function fmtMoney(n){
+  const num = Number(n||0);
+  return num ? num.toLocaleString("zh-TW") : "0";
+}
 
-  const DEFAULT_TIME_GROUPS = {
-    "上午": ["09:00–09:30", "09:30–10:00", "10:00–10:30"],
-    "下午": ["15:30–16:00", "16:30–17:00"],
-    "晚上": ["19:30–20:00", "20:00–20:30"],
-  };
+function ymd(d){
+  const yy = d.getFullYear();
+  const mm = String(d.getMonth()+1).padStart(2,"0");
+  const dd = String(d.getDate()).padStart(2,"0");
+  return `${yy}-${mm}-${dd}`;
+}
 
-  function setStatus(ok, text){
-    statusBadge.innerHTML = (ok ? '<span class="okdot"></span>' : '<span class="baddot"></span>') + text;
+function dateAddDays(base, days){
+  const d = new Date(base.getFullYear(), base.getMonth(), base.getDate());
+  d.setDate(d.getDate()+days);
+  return d;
+}
+
+function enforceDateWindow(){
+  const today = new Date();
+  const minD = dateAddDays(today, 3);
+  const maxD = dateAddDays(today, 27);
+  const dateEl = document.getElementById("date");
+  dateEl.min = ymd(minD);
+  dateEl.max = ymd(maxD);
+}
+
+/** =============================
+ * LIFF init
+ * ============================= */
+async function initLIFF(){
+  if (!LIFF_ID || LIFF_ID.includes("請填入")) {
+    setStatus(false, "請先在 index.html 填入 LIFF_ID");
+    return;
   }
-  function money(n){
-    try { return "$" + Number(n).toLocaleString("zh-TW"); } catch { return "$" + n; }
-  }
+  try{
+    await liff.init({ liffId: LIFF_ID });
 
-  // 避免選到過去日期（以使用者裝置日期為準）
-  (function setMinDate(){
-    const today = new Date();
-    const yyyy = today.getFullYear();
-    const mm = String(today.getMonth()+1).padStart(2,"0");
-    const dd = String(today.getDate()).padStart(2,"0");
-    dateInput.min = `${yyyy}-${mm}-${dd}`;
-  })();
-
-  // ===== Vaccines =====
-  async function loadVaccines(){
-    const url = GAS_EXEC_URL + "?action=vaccines";
-    const res = await fetch(url, { method:"GET", cache:"no-store" });
-    const json = await res.json();
-    if (!json.ok) throw new Error(json.msg || "疫苗清單讀取失敗");
-
-    vaccineMap.clear();
-    vaccineSelect.innerHTML = '<option value="">請選擇</option>';
-
-    for (const it of (json.items || [])) {
-      vaccineMap.set(it.vaccineId, it);
-      const opt = document.createElement("option");
-      opt.value = it.vaccineId;
-      opt.textContent = `${it.name}｜${money(it.price)}/劑`;
-      vaccineSelect.appendChild(opt);
-    }
-  }
-
-  function renderVaccineInfo(){
-    const id = vaccineSelect.value;
-    if (!id || !vaccineMap.has(id)) {
-      vaccineInfo.style.display = "none";
-      vaccineInfo.textContent = "";
-      return;
-    }
-    const v = vaccineMap.get(id);
-    const noteLine = v.note ? `📌 備註：${v.note}\n` : "";
-    vaccineInfo.textContent =
-      `💉 疫苗：${v.name}\n` +
-      `💰 價格：${money(v.price)}/劑\n` +
-      noteLine +
-      `⚠️ 本疫苗需先經醫師評估是否適合施打`;
-    vaccineInfo.style.display = "block";
-  }
-  vaccineSelect.addEventListener("change", renderVaccineInfo);
-
-  // ===== Times =====
-  function renderTimeOptions(groups) {
-    timeSelect.innerHTML = '<option value="">請選擇</option>';
-
-    for (const [label, times] of Object.entries(groups)) {
-      if (!times || times.length === 0) continue;
-
-      const og = document.createElement("optgroup");
-      og.label = label;
-
-      for (const t of times) {
-        const opt = document.createElement("option");
-        opt.value = t;
-        opt.textContent = t;
-        og.appendChild(opt);
-      }
-      timeSelect.appendChild(og);
-    }
-
-    // 整天無時段
-    if (timeSelect.querySelectorAll("option").length <= 1) {
-      const opt = document.createElement("option");
-      opt.value = "";
-      opt.textContent = "當日無可預約時段";
-      opt.disabled = true;
-      timeSelect.appendChild(opt);
-    }
-  }
-
-  async function refreshTimesByDate(dateStr) {
-    if (!dateStr) {
-      renderTimeOptions(DEFAULT_TIME_GROUPS);
+    if (!liff.isInClient()){
+      document.getElementById("clientWarn").textContent =
+        "請從 LINE 官方入口開啟（圖文選單 / LIFF 連結），不要用一般瀏覽器直接開。";
+      setStatus(false, "請從 LINE 官方入口開啟");
       return;
     }
 
-    const url = GAS_EXEC_URL + "?action=times&date=" + encodeURIComponent(dateStr);
-    const res = await fetch(url, { method: "GET", cache: "no-store" });
-    const json = await res.json();
-
-    if (json.ok && json.useDefault === false) {
-      renderTimeOptions(json.groups || {});
-    } else {
-      renderTimeOptions(DEFAULT_TIME_GROUPS);
-    }
+    const profile = await liff.getProfile();
+    lineUid = profile.userId || "";
+    setStatus(true, "已連線，可開始填寫。");
+  }catch(err){
+    console.error(err);
+    setStatus(false, "LIFF 初始化失敗，請檢查 LIFF ID / Endpoint URL。");
+    Swal.fire("LIFF 初始化失敗", String(err?.message || err), "error");
   }
+}
 
-  // ===== LIFF init =====
-  async function init(){
-    try{
-      await liff.init({ liffId: LIFF_ID });
+/** =============================
+ * API
+ * ============================= */
+async function apiGet(url){
+  const res = await fetch(url, { cache:"no-store" });
+  return await res.json();
+}
 
-      if (!liff.isInClient()){
-        setStatus(false, "請從 LIFF 入口開啟");
-        Swal.fire("請從 LINE 官方入口開啟", "請點選官方帳號的圖文選單 / LIFF 連結進入。", "warning");
-        return;
-      }
-      if (!liff.isLoggedIn()){
-        setStatus(false, "導向登入中…");
-        liff.login();
-        return;
-      }
-
-      const p = await liff.getProfile();
-      lineUid = p.userId;
-      setStatus(true, "已連線 LINE");
-
-      // 預設時段
-      renderTimeOptions(DEFAULT_TIME_GROUPS);
-
-      // 疫苗清單
-      await loadVaccines();
-      vaccineSelect.value = "";
-      renderVaccineInfo();
-
-      // 日期變更 → 依 TimeRules 更新時段
-      dateInput.addEventListener("change", () => {
-        refreshTimesByDate(dateInput.value);
-      });
-
-    }catch(err){
-      setStatus(false, "初始化失敗");
-      Swal.fire("初始化失敗", String(err?.message || err), "error");
-    }
-  }
-  window.addEventListener("load", init);
-
-  // ===== Page flow =====
-  btnNext.addEventListener("click", () => {
-    if (!document.getElementById("agree").checked){
-      Swal.fire("請先勾選同意", "", "info");
-      return;
-    }
-    pageRules.style.display = "none";
-    pageForm.style.display = "block";
+// ✅ 不帶 headers：避免 preflight / Load failed
+async function apiPostJson(payload){
+  const res = await fetch(GAS_EXEC_URL, {
+    method: "POST",
+    body: JSON.stringify(payload) // 會是 text/plain
   });
+  return await res.json();
+}
 
-  // ===== Submit (必填檢查 + 確認框 + 成功畫面 + LINE 回傳摘要) =====
-  formEl.addEventListener("submit", async (e) => {
-    e.preventDefault();
+/** =============================
+ * Vaccines
+ * ============================= */
+async function loadVaccines(){
+  if (!GAS_EXEC_URL || GAS_EXEC_URL.includes("請填入")) {
+    setStatus(false, "請先在 index.html 填入 GAS_EXEC_URL");
+    return;
+  }
+  const data = await apiGet(`${GAS_EXEC_URL}?action=vaccines`);
+  if (!data.ok) {
+    setStatus(false, data.msg || "讀取疫苗清單失敗");
+    return;
+  }
+  vaccines = data.items || [];
 
-    // required / pattern 檢查
-    if (!formEl.checkValidity()) {
-      formEl.reportValidity();
-      return;
-    }
+  const sel = document.getElementById("vaccineId");
+  sel.innerHTML = `<option value="">請選擇疫苗</option>` + vaccines.map(v => {
+    const label = `${v.name}（$${fmtMoney(v.price)}/劑）`;
+    return `<option value="${encodeURIComponent(v.vaccineId)}">${label}</option>`;
+  }).join("");
 
-    if (!liff.isInClient() || !lineUid){
-      Swal.fire("請從 LINE 官方入口開啟", "目前無法取得 LINE 使用者資訊", "warning");
-      return;
-    }
+  sel.addEventListener("change", onVaccineChange);
+  onVaccineChange();
+}
 
-    // 收集資料
-    const data = {};
-    new FormData(formEl).forEach((v,k)=> data[k]=v);
-    data.lineId = lineUid;
+function onVaccineChange(){
+  const sel = document.getElementById("vaccineId");
+  const vid = decodeURIComponent(sel.value || "");
+  const box = document.getElementById("vaccineInfo");
+  const text = document.getElementById("vaccineInfoText");
+  const v = vaccines.find(x => x.vaccineId === vid);
 
-    const vaccineText = vaccineSelect?.selectedOptions?.[0]?.textContent || data.vaccineId;
+  if (!v){
+    box.style.display = "none";
+    text.textContent = "";
+    return;
+  }
+  box.style.display = "block";
+  const note = v.note ? `備註：${v.note}` : "備註：—";
+  text.textContent = `價格：$${fmtMoney(v.price)}/劑\n${note}\n（所有疫苗施打皆需先由醫師評估）`;
+}
 
-    // 送出前確認框（疫苗/日期/時間）
-    const { isConfirmed } = await Swal.fire({
-      title: "請確認預約內容",
-      icon: "question",
-      html:
-        `<div style="text-align:left;line-height:1.9">
-          <div><b>預約疫苗：</b>${vaccineText}</div>
-          <div><b>預約日期：</b>${data.date}</div>
-          <div><b>預約時間：</b>${data.time}</div>
-          <hr style="border:none;border-top:1px solid #e5e7eb;margin:10px 0;">
-          <div style="color:#6b7280;font-size:12px">
-            ⚠️ 所有疫苗皆需先經醫師評估是否適合施打
-          </div>
-        </div>`,
-      showCancelButton: true,
-      confirmButtonText: "確認送出",
-      cancelButtonText: "返回修改",
+/** =============================
+ * Times (TimeRules)
+ * ============================= */
+function renderTimeGroups(groups){
+  const wrap = document.getElementById("timeGroups");
+  wrap.innerHTML = "";
+
+  const hiddenSelect = document.getElementById("time");
+  hiddenSelect.innerHTML = `<option value="">請選擇時段</option>`;
+
+  const periods = ["上午","下午","晚上"];
+  let any = false;
+
+  periods.forEach(p => {
+    const times = (groups && groups[p]) ? groups[p] : [];
+    if (!times.length) return;
+
+    any = true;
+    const group = document.createElement("div");
+    group.className = "group";
+
+    const title = document.createElement("div");
+    title.className = "group-title";
+    title.textContent = p;
+    group.appendChild(title);
+
+    const chips = document.createElement("div");
+    chips.className = "chips";
+
+    times.forEach(t => {
+      // 同步到 hidden select（用 required 驗證）
+      const opt = document.createElement("option");
+      opt.value = t;
+      opt.textContent = `${p} ${t}`;
+      hiddenSelect.appendChild(opt);
+
+      const chip = document.createElement("button");
+      chip.type = "button";
+      chip.className = "chip";
+      chip.textContent = t;
+      chip.addEventListener("click", () => {
+        // 清除 active
+        wrap.querySelectorAll(".chip").forEach(c => c.classList.remove("active"));
+        chip.classList.add("active");
+        hiddenSelect.value = t;
+      });
+      chips.appendChild(chip);
     });
 
-    if (!isConfirmed) return;
-
-    // 送出（不帶 headers，避免 preflight / Load failed）
-    try{
-      Swal.fire({ title:"送出中…", allowOutsideClick:false, didOpen:()=>Swal.showLoading() });
-
-      const res = await fetch(GAS_EXEC_URL, {
-        method: "POST",
-        body: JSON.stringify(data),
-        redirect: "follow",
-        cache: "no-store",
-      });
-
-      const json = await res.json();
-
-      if (json.ok){
-        // 要回傳與顯示的摘要
-        const summary =
-`✅ 預約成功
-姓名：${data.name}
-生日：${data.birthday}
-電話：${data.phone}
-
-疫苗：${vaccineText}
-日期：${data.date}
-時間：${data.time}
-
-提醒：請攜帶健保卡、現金；國小以下孩童需攜帶兒童手冊
-⚠️ 所有疫苗皆需先經醫師評估是否適合施打`;
-
-        // 回傳到 LINE（失敗不影響成功）
-        try{
-          await liff.sendMessages([{ type:"text", text: summary }]);
-        }catch(e){
-          console.error("sendMessages failed:", e);
-        }
-
-        // 成功畫面（你指定的資訊）
-        await Swal.fire({
-          title: "預約成功",
-          icon: "success",
-          html:
-            `<div style="text-align:left;line-height:1.9">
-              <div><b>姓名：</b>${data.name}</div>
-              <div><b>出生年月日：</b>${data.birthday}</div>
-              <div><b>電話號碼：</b>${data.phone}</div>
-              <hr style="border:none;border-top:1px solid #e5e7eb;margin:10px 0;">
-              <div><b>預約疫苗：</b>${vaccineText}</div>
-              <div><b>預約日期：</b>${data.date}</div>
-              <div><b>預約時間：</b>${data.time}</div>
-              <hr style="border:none;border-top:1px solid #e5e7eb;margin:10px 0;">
-              <div style="color:#6b7280;font-size:12px">
-                提醒：請攜帶健保卡、現金；國小以下孩童需攜帶兒童手冊<br/>
-                ⚠️ 所有疫苗皆需先經醫師評估是否適合施打
-              </div>
-            </div>`,
-          confirmButtonText: "關閉",
-        });
-
-        liff.closeWindow();
-      } else {
-        Swal.fire("送出失敗", json.msg || json.message || "未知錯誤", "error");
-      }
-    }catch(err){
-      Swal.fire("送出失敗", String(err?.message || err), "error");
-    }
+    group.appendChild(chips);
+    wrap.appendChild(group);
   });
+
+  if (!any){
+    wrap.innerHTML = `<div class="hint">此日期未設定可預約時段，請改選其他日期或由櫃檯協助。</div>`;
+    hiddenSelect.value = "";
+  }else{
+    hiddenSelect.value = ""; // 重置
+  }
+}
+
+async function loadTimesByDate(dateStr){
+  if (!dateStr) return;
+
+  // 先用後端 TimeRules；若 useDefault=true -> 用 DEFAULT_TIME_GROUPS
+  const data = await apiGet(`${GAS_EXEC_URL}?action=times&date=${encodeURIComponent(dateStr)}`);
+  if (!data.ok){
+    renderTimeGroups({});
+    return;
+  }
+
+  if (data.useDefault){
+    renderTimeGroups(DEFAULT_TIME_GROUPS);
+  }else{
+    renderTimeGroups(data.groups || {});
+  }
+}
+
+/** =============================
+ * My booking + Cancel
+ * ============================= */
+async function refreshMyBookingUI(){
+  const box = document.getElementById("myBox");
+  const text = document.getElementById("myText");
+  const btnCancel = document.getElementById("btnCancel");
+
+  const me = await apiGet(`${GAS_EXEC_URL}?action=my&lineId=${encodeURIComponent(lineUid)}`);
+
+  if (!me.ok){
+    box.style.display = "block";
+    text.textContent = me.msg || "查詢失敗";
+    btnCancel.style.display = "none";
+    return;
+  }
+
+  if (!me.hasBooking){
+    box.style.display = "block";
+    text.textContent = "目前沒有有效預約。";
+    btnCancel.style.display = "none";
+    return;
+  }
+
+  const b = me.booking || {};
+  box.style.display = "block";
+  text.textContent = `姓名：${b.name || ""}\n電話：${b.phone || ""}\n疫苗：${b.vaccineName || ""}\n日期：${b.date || ""}\n時間：${b.time || ""}`;
+  btnCancel.style.display = "inline-block";
+}
+
+async function doCancel(){
+  const sure = await Swal.fire({
+    title: "確認取消預約？",
+    text: "取消後將立即通知你已取消。",
+    icon: "warning",
+    showCancelButton: true,
+    confirmButtonText: "確認取消",
+    cancelButtonText: "先不要"
+  });
+  if (!sure.isConfirmed) return;
+
+  const json = await apiPostJson({ action:"cancel", lineId: lineUid });
+
+  if (!json.ok){
+    await Swal.fire("取消失敗", json.msg || "取消失敗", "error");
+    return;
+  }
+
+  // ✅ 取消後用後端回傳內容直接回訊息（不用再查一次）
+  try{
+    const b = json.booking || {};
+    const cancelMsg =
+`❌ 已取消預約通知
+姓名：${b.name || ""}
+疫苗：${b.vaccineName || ""}
+日期：${b.date || ""}
+時間：${b.time || ""}`;
+    await liff.sendMessages([{ type:"text", text: cancelMsg }]);
+  }catch(e){
+    console.error("sendMessages cancel failed:", e);
+  }
+
+  await Swal.fire("已取消預約", "取消成功", "success");
+  await refreshMyBookingUI();
+}
+
+/** =============================
+ * Submit
+ * ============================= */
+function getSelectedVaccineText(){
+  const sel = document.getElementById("vaccineId");
+  const opt = sel.selectedOptions?.[0];
+  return opt ? opt.textContent : "";
+}
+
+async function onSubmit(e){
+  e.preventDefault();
+
+  // HTML required 驗證
+  const form = document.getElementById("form");
+  if (!form.reportValidity()) return;
+
+  // 前端日期防呆（仍以後端為準，但先擋錯誤操作）
+  const dateStr = document.getElementById("date").value;
+  const today = new Date();
+  const minD = ymd(dateAddDays(today, 3));
+  const maxD = ymd(dateAddDays(today, 27));
+  if (dateStr < minD || dateStr > maxD){
+    await Swal.fire("日期不在可預約範圍", `請選擇 ${minD} ～ ${maxD}`, "warning");
+    return;
+  }
+
+  const timeStr = document.getElementById("time").value;
+  if (!timeStr){
+    await Swal.fire("請選擇預約時段", "請先選日期，再點選一個可預約的時段。", "warning");
+    return;
+  }
+
+  const payload = {
+    action: "book",
+    lineId: lineUid,
+    name: document.getElementById("name").value.trim(),
+    phone: document.getElementById("phone").value.trim(),
+    birthday: document.getElementById("birthday").value,
+    idCard: document.getElementById("idCard").value.trim(),
+    vaccineId: decodeURIComponent(document.getElementById("vaccineId").value || ""),
+    date: dateStr,
+    time: timeStr
+  };
+
+  const vaccineText = getSelectedVaccineText();
+
+  // 送出前確認
+  const confirm = await Swal.fire({
+    title: "確認預約內容",
+    html: `
+      <div style="text-align:left;line-height:1.8">
+        <div><b>姓名：</b>${payload.name}</div>
+        <div><b>電話：</b>${payload.phone}</div>
+        <div><b>疫苗：</b>${vaccineText}</div>
+        <div><b>日期：</b>${payload.date}</div>
+        <div><b>時間：</b>${payload.time}</div>
+      </div>`,
+    icon: "question",
+    showCancelButton: true,
+    confirmButtonText: "確認送出",
+    cancelButtonText: "返回修改"
+  });
+  if (!confirm.isConfirmed) return;
+
+  document.getElementById("btnSubmit").disabled = true;
+
+  try{
+    const json = await apiPostJson(payload);
+
+    if (!json.ok){
+      await Swal.fire("送出失敗", json.msg || "請稍後再試", "error");
+      return;
+    }
+
+    // ✅ 預約成功後立即用 LIFF 回訊息
+    try{
+      const bookingMsg =
+`✅ 預約成功通知
+姓名：${payload.name}
+疫苗：${vaccineText}
+日期：${payload.date}
+時間：${payload.time}
+
+提醒：請攜帶健保卡、現金；國小以下孩童請攜帶兒童健康手冊。`;
+      await liff.sendMessages([{ type:"text", text: bookingMsg }]);
+    }catch(e){
+      console.error("sendMessages booking failed:", e);
+    }
+
+    await Swal.fire({
+      title: "預約成功",
+      html: `
+        <div style="text-align:left;line-height:1.8">
+          <div><b>姓名：</b>${payload.name}</div>
+          <div><b>出生年月日：</b>${payload.birthday}</div>
+          <div><b>電話：</b>${payload.phone}</div>
+          <div style="margin-top:8px"><b>預約疫苗：</b>${vaccineText}</div>
+          <div><b>預約日期：</b>${payload.date}</div>
+          <div><b>預約時間：</b>${payload.time}</div>
+          <hr style="border:none;border-top:1px solid #eee;margin:12px 0">
+          <div>提醒：請攜帶健保卡、現金；國小以下孩童請攜帶兒童健康手冊。</div>
+        </div>`,
+      icon: "success",
+      confirmButtonText: "完成"
+    });
+
+    await refreshMyBookingUI();
+    // 你想自動關閉 LIFF 的話打開下面這行：
+    // liff.closeWindow();
+
+  } finally {
+    document.getElementById("btnSubmit").disabled = false;
+  }
+}
+
+/** =============================
+ * init
+ * ============================= */
+document.getElementById("form").addEventListener("submit", onSubmit);
+document.getElementById("btnMy").addEventListener("click", refreshMyBookingUI);
+document.getElementById("btnCancel").addEventListener("click", doCancel);
+
+document.getElementById("date").addEventListener("change", async (e) => {
+  // 換日期時清空已選時段
+  document.getElementById("time").value = "";
+  document.getElementById("timeGroups").querySelectorAll(".chip").forEach(c => c.classList.remove("active"));
+  await loadTimesByDate(e.target.value);
+});
+
+(async function main(){
+  enforceDateWindow();
+  await initLIFF();
+  if (!lineUid) return;
+  await loadVaccines();
+  await refreshMyBookingUI();
+})();
 </script>
 </body>
 </html>
