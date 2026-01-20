@@ -24,7 +24,7 @@
         radial-gradient(900px 500px at 85% 10%, rgba(45,124,255,.16), transparent 55%),
         var(--bg);
       color:var(--ink);
-      font-size: 17px; /* ✅ 字體加大 */
+      font-size:17px;
     }
     .wrap{max-width:820px;margin:0 auto}
     .top{display:flex;align-items:center;gap:12px;margin-bottom:14px}
@@ -76,22 +76,12 @@
       border:1px dashed rgba(45,124,255,.35);
       background:rgba(45,124,255,.06);
     }
-    .checkRow input{
-      flex:0 0 auto;
-      width:22px;height:22px;
-      margin-top:2px;
-    }
+    .checkRow input{flex:0 0 auto;width:22px;height:22px;margin-top:2px}
     .checkRow label{
-      flex:1 1 auto;
-      min-width:0;
-      width:100%;
-      display:block;
-      white-space:normal;
-      word-break:break-word;
+      flex:1 1 auto; min-width:0; width:100%;
+      display:block; white-space:normal; word-break:break-word;
       writing-mode:horizontal-tb;
-      font-size:15.5px;
-      line-height:1.6;
-      color:#244;
+      font-size:15.5px; line-height:1.6; color:#244;
     }
 
     .btnRow{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}
@@ -116,12 +106,13 @@
     .box b{display:block;margin-bottom:6px}
     .small{font-size:15px;color:var(--muted);margin-top:6px}
 
-    .times .group{margin-top:10px}
-    .times .group-title{font-size:15px;color:#2b3a4c;font-weight:800;margin-bottom:6px}
+    .times .group{margin-top:12px}
+    .times .group-title{font-size:15px;color:#2b3a4c;font-weight:900;margin-bottom:8px}
     .chips{display:flex;flex-wrap:wrap;gap:8px}
     .chip{
       border:1px solid #d8e3f2;background:#fff;border-radius:999px;
       padding:9px 12px;font-size:15px;cursor:pointer;
+      white-space:nowrap;
     }
     .chip.active{border-color:rgba(45,124,255,.70);box-shadow:0 0 0 4px rgba(45,124,255,.12)}
   </style>
@@ -141,7 +132,7 @@
       <div class="pill">🔔 預約日前一天晚上 19:00 會推播預約確認</div>
       <div id="status" class="status"></div>
 
-      <!-- Page 1: Rules + Consent -->
+      <!-- Page 1 -->
       <section id="pageRules" class="page active">
         <div class="divider"></div>
         <div class="hint"><b>預約規則說明（請先詳閱）</b></div>
@@ -180,7 +171,7 @@
         </div>
       </section>
 
-      <!-- Page 2: Booking -->
+      <!-- Page 2 -->
       <section id="pageBooking" class="page">
         <div class="divider"></div>
 
@@ -229,6 +220,7 @@
             <label for="date">預約日期 <span class="req">*</span></label>
             <input id="date" type="date" required />
             <div class="small">可預約範圍：未來第 7 天 ～ 第 28 天（含）</div>
+            <div class="small">固定規則：週五全日不開放；週日晚上不開放（休假日可用 TimeRules 另行設定）</div>
           </div>
 
           <div class="form-group">
@@ -259,13 +251,6 @@
 const LIFF_ID = "2008829528-z2IIrBwj";
 const GAS_EXEC_URL = "https://script.google.com/macros/s/AKfycbxtA1h2KPLTuhAc6eQX4WD7g0RHwL-YYy669ZxLlYfUBdqdovmxb4S4IMsKViWzeCw/exec";
 
-/** 預設時段（TimeRules 該日沒規則就用這組） */
-const DEFAULT_TIME_GROUPS = {
-  "上午": ["09:00","09:30","10:00","10:30","11:00","11:30"],
-  "下午": ["14:00","14:30","15:00","15:30","16:00","16:30"],
-  "晚上": ["18:30","19:00","19:30","20:00"]
-};
-
 let lineUid = "";
 let vaccines = [];
 
@@ -284,23 +269,18 @@ function dateAddDays(base, days){
   const d = new Date(base.getFullYear(), base.getMonth(), base.getDate());
   d.setDate(d.getDate()+days); return d;
 }
-
-/** ✅ 顯示用：日期 MM/dd、時間 H:mm（例 08/01、9:00） */
 function mdFromYmd(ymdStr){
   if (!ymdStr) return "";
   const m = String(ymdStr).match(/^(\d{4})-(\d{2})-(\d{2})$/);
   if (m) return `${m[2]}/${m[3]}`;
-  // fallback
-  const m2 = String(ymdStr).match(/(\d{1,2})[\/\-](\d{1,2})/);
-  if (m2) return `${String(m2[1]).padStart(2,"0")}/${String(m2[2]).padStart(2,"0")}`;
   return String(ymdStr);
 }
-function hmFromTime(t){
-  if (!t) return "";
-  const s = String(t).trim();
-  const m = s.match(/^(\d{1,2}):(\d{2})/);
-  if (m) return `${Number(m[1])}:${m[2]}`;
-  return s;
+function slotHm(slot){
+  if (!slot) return "";
+  const s = String(slot).trim().replace(/–/g,"-").replace(/—/g,"-").replace(/\s+/g,"");
+  const m = s.match(/^(\d{1,2}):(\d{2})-(\d{1,2}):(\d{2})$/);
+  if (!m) return String(slot);
+  return `${Number(m[1])}:${m[2]}-${Number(m[3])}:${m[4]}`;
 }
 
 /** ✅ 前端日期限制：未來 7～28 天（含） */
@@ -345,12 +325,8 @@ async function apiGet(url){
   const res = await fetch(url, { cache:"no-store" });
   return await res.json();
 }
-/** ✅ 不帶 headers，避免 preflight */
 async function apiPostJson(payload){
-  const res = await fetch(GAS_EXEC_URL, {
-    method: "POST",
-    body: JSON.stringify(payload)
-  });
+  const res = await fetch(GAS_EXEC_URL, { method:"POST", body: JSON.stringify(payload) });
   return await res.json();
 }
 
@@ -393,21 +369,27 @@ function onVaccineChange(){
   text.textContent = `價格：$${fmtMoney(v.price)}/劑\n${note}\n（所有疫苗施打皆需先由醫師評估）`;
 }
 
-function renderTimeGroups(groups){
+/** ✅ 固定顯示「上午/下午/晚上」分隔；沒有時段就顯示本時段未開放 */
+function renderTimeGroups(groups, blockedMsg){
   const wrap = document.getElementById("timeGroups");
   wrap.innerHTML = "";
 
   const hiddenSelect = document.getElementById("time");
   hiddenSelect.innerHTML = `<option value="">請選擇時段</option>`;
 
+  if (blockedMsg){
+    wrap.innerHTML = `<div class="hint">${blockedMsg}</div>`;
+    hiddenSelect.value = "";
+    return;
+  }
+
   const periods = ["上午","下午","晚上"];
-  let any = false;
+  let total = 0;
 
   periods.forEach(p => {
     const times = (groups && groups[p]) ? groups[p] : [];
-    if (!times.length) return;
+    total += times.length;
 
-    any = true;
     const group = document.createElement("div");
     group.className = "group";
 
@@ -416,19 +398,28 @@ function renderTimeGroups(groups){
     title.textContent = p;
     group.appendChild(title);
 
+    if (!times.length){
+      const empty = document.createElement("div");
+      empty.className = "hint";
+      empty.textContent = "本時段未開放";
+      group.appendChild(empty);
+      wrap.appendChild(group);
+      return;
+    }
+
     const chips = document.createElement("div");
     chips.className = "chips";
 
     times.forEach(t => {
       const opt = document.createElement("option");
-      opt.value = t;
+      opt.value = t; // ✅ 區間值
       opt.textContent = `${p} ${t}`;
       hiddenSelect.appendChild(opt);
 
       const chip = document.createElement("button");
       chip.type = "button";
       chip.className = "chip";
-      chip.textContent = t;
+      chip.textContent = t; // ✅ 顯示區間
       chip.addEventListener("click", () => {
         wrap.querySelectorAll(".chip").forEach(c => c.classList.remove("active"));
         chip.classList.add("active");
@@ -441,10 +432,8 @@ function renderTimeGroups(groups){
     wrap.appendChild(group);
   });
 
-  if (!any){
-    wrap.innerHTML = `<div class="hint">此日期未設定可預約時段，請改選其他日期或由櫃檯協助。</div>`;
-    hiddenSelect.value = "";
-  }else{
+  if (total === 0){
+    wrap.innerHTML = `<div class="hint">此日期未開放時段，請改選其他日期或由櫃檯協助。</div>`;
     hiddenSelect.value = "";
   }
 }
@@ -453,10 +442,10 @@ async function loadTimesByDate(dateStr){
   if (!dateStr) return;
   const data = await apiGet(`${GAS_EXEC_URL}?action=times&date=${encodeURIComponent(dateStr)}`);
   if (!data.ok){
-    renderTimeGroups({});
+    renderTimeGroups({}, data.msg || "讀取時段失敗");
     return;
   }
-  renderTimeGroups(data.useDefault ? DEFAULT_TIME_GROUPS : (data.groups || {}));
+  renderTimeGroups(data.groups || {}, data.blockedMsg || "");
 }
 
 async function refreshMyBookingUI(){
@@ -509,7 +498,7 @@ async function doCancel(){
     return;
   }
 
-  // ✅ 前端 LIFF 也送一則（最穩；日期/時間已是 MM/dd、H:mm）
+  // ✅ 前端 LIFF 也送一則（最穩；就算後端 token 沒設也有訊息）
   try{
     const b = json.booking || {};
     const cancelMsg =
@@ -545,8 +534,8 @@ async function onSubmit(e){
     return;
   }
 
-  const timeStr = document.getElementById("time").value;
-  if (!timeStr){
+  const slot = document.getElementById("time").value;
+  if (!slot){
     await Swal.fire("請選擇預約時段", "請先選日期，再點選一個可預約的時段。", "warning");
     return;
   }
@@ -560,7 +549,7 @@ async function onSubmit(e){
     idCard: document.getElementById("idCard").value.trim(),
     vaccineId: decodeURIComponent(document.getElementById("vaccineId").value || ""),
     date: dateStr,
-    time: timeStr
+    time: slot // ✅ 區間值
   };
 
   const vaccineText = getSelectedVaccineText();
@@ -573,7 +562,7 @@ async function onSubmit(e){
         <div><b>電話：</b>${payload.phone}</div>
         <div><b>疫苗：</b>${vaccineText}</div>
         <div><b>日期：</b>${mdFromYmd(payload.date)}</div>
-        <div><b>時間：</b>${hmFromTime(payload.time)}</div>
+        <div><b>時間：</b>${slotHm(payload.time)}</div>
       </div>`,
     icon: "question",
     showCancelButton: true,
@@ -591,14 +580,14 @@ async function onSubmit(e){
       return;
     }
 
-    // ✅ 預約成功：前端 LIFF 立即送（後端也會 Push 再補一則）
+    // ✅ 預約成功：前端 LIFF 立即送（後端 token 有設也會再 push 一次）
     try{
       const bookingMsg =
 `✅ 德昌小兒科診所｜預約成功
 姓名：${payload.name}
 疫苗：${vaccineText}
 日期：${mdFromYmd(payload.date)}
-時間：${hmFromTime(payload.time)}
+時間：${slotHm(payload.time)}
 
 提醒：請攜帶健保卡、現金；國小以下孩童請攜帶兒童健康手冊。`;
       await liff.sendMessages([{ type:"text", text: bookingMsg }]);
@@ -619,7 +608,7 @@ btnGoBooking.addEventListener("click", () => { if (agreeEl.checked) showPage("pa
 
 document.getElementById("btnHelp").addEventListener("click", async () => {
   await Swal.fire("常見問題",
-    "1) 請從 LINE 官方入口開啟\n2) 若看不到時段：請先選日期（或該日未開放）\n3) 若送出失敗：可能日期/時段不符或額滿",
+    "1) 請從 LINE 官方入口開啟\n2) 若看不到時段：請先選日期（或該日未開放）\n3) 週五全日不開放、週日晚上不開放\n4) 休假日/國定假日可由 TimeRules 設定",
     "info"
   );
 });
