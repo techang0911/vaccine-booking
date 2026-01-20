@@ -37,7 +37,7 @@
     }
     h1{margin:0;font-size:22px;line-height:1.25}
     .subtitle{margin:2px 0 0;color:var(--muted);font-size:15px}
-    .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:18px}
+    .card{background:var(--card);border:1px solid var(--line);border-radius:18px;box-shadow:var(--shadow);padding:18px}
     .pill{
       display:inline-flex;align-items:center;gap:8px;
       padding:8px 10px;border-radius:999px;
@@ -67,12 +67,8 @@
     .rule .t{font-size:16px;line-height:1.7}
 
     .checkRow{
-      margin-top:14px;
-      display:flex;
-      align-items:flex-start;
-      gap:12px;
-      padding:12px;
-      border-radius:14px;
+      margin-top:14px; display:flex; align-items:flex-start; gap:12px;
+      padding:12px; border-radius:14px;
       border:1px dashed rgba(45,124,255,.35);
       background:rgba(45,124,255,.06);
     }
@@ -132,7 +128,6 @@
       <div class="pill">🔔 預約日前一天晚上七點會推播預約確認</div>
       <div id="status" class="status"></div>
 
-      <!-- Page 1 -->
       <section id="pageRules" class="page active">
         <div class="divider"></div>
         <div class="hint"><b>預約規則說明（請先詳閱）</b></div>
@@ -171,7 +166,6 @@
         </div>
       </section>
 
-      <!-- Page 2 -->
       <section id="pageBooking" class="page">
         <div class="divider"></div>
 
@@ -270,17 +264,14 @@ function dateAddDays(base, days){
   d.setDate(d.getDate()+days); return d;
 }
 function mdFromYmd(ymdStr){
-  if (!ymdStr) return "";
-  const m = String(ymdStr).match(/^(\d{4})-(\d{2})-(\d{2})$/);
-  if (m) return `${m[2]}/${m[3]}`;
-  return String(ymdStr);
+  const m = String(ymdStr||"").match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  return m ? `${m[2]}/${m[3]}` : String(ymdStr||"");
 }
 function slotHm(slot){
   if (!slot) return "";
   const s = String(slot).trim().replace(/–/g,"-").replace(/—/g,"-").replace(/\s+/g,"");
   const m = s.match(/^(\d{1,2}):(\d{2})-(\d{1,2}):(\d{2})$/);
-  if (!m) return String(slot);
-  return `${Number(m[1])}:${m[2]}-${Number(m[3])}:${m[4]}`;
+  return m ? `${Number(m[1])}:${m[2]}-${Number(m[3])}:${m[4]}` : String(slot);
 }
 
 /** ✅ 前端日期限制：未來 7～28 天（含） */
@@ -303,22 +294,16 @@ async function initLIFF(){
     setStatus(false, "請先在 index.html 填入 LIFF_ID");
     return;
   }
-  try{
-    await liff.init({ liffId: LIFF_ID });
+  await liff.init({ liffId: LIFF_ID });
 
-    if (!liff.isInClient()){
-      setStatus(false, "請從 LINE 官方入口開啟（圖文選單 / LIFF 連結）");
-      await Swal.fire("請從 LINE 官方入口開啟", "請點選官方帳號的圖文選單 / LIFF 連結進入。", "warning");
-      return;
-    }
-    const profile = await liff.getProfile();
-    lineUid = profile.userId || "";
-    setStatus(true, "已連線 ✔ 請先閱讀規則並勾選同意後開始預約。");
-  }catch(err){
-    console.error(err);
-    setStatus(false, "LIFF 初始化失敗，請檢查 LIFF ID / Endpoint URL。");
-    Swal.fire("LIFF 初始化失敗", String(err?.message || err), "error");
+  if (!liff.isInClient()){
+    setStatus(false, "請從 LINE 官方入口開啟（圖文選單 / LIFF 連結）");
+    await Swal.fire("請從 LINE 官方入口開啟", "請點選官方帳號的圖文選單 / LIFF 連結進入。", "warning");
+    return;
   }
+  const profile = await liff.getProfile();
+  lineUid = profile.userId || "";
+  setStatus(true, "已連線 ✔ 請先閱讀規則並勾選同意後開始預約。");
 }
 
 async function apiGet(url){
@@ -331,17 +316,10 @@ async function apiPostJson(payload){
 }
 
 async function loadVaccines(){
-  if (!GAS_EXEC_URL || GAS_EXEC_URL.includes("請填入")) {
-    setStatus(false, "請先在 index.html 填入 GAS_EXEC_URL");
-    return;
-  }
   const data = await apiGet(`${GAS_EXEC_URL}?action=vaccines`);
-  if (!data.ok) {
-    setStatus(false, data.msg || "讀取疫苗清單失敗");
-    return;
-  }
-  vaccines = data.items || [];
+  if (!data.ok) { setStatus(false, data.msg || "讀取疫苗清單失敗"); return; }
 
+  vaccines = data.items || [];
   const sel = document.getElementById("vaccineId");
   sel.innerHTML = `<option value="">請選擇疫苗</option>` + vaccines.map(v => {
     const label = `${v.name}（$${fmtMoney(v.price)}/劑）`;
@@ -359,11 +337,8 @@ function onVaccineChange(){
   const text = document.getElementById("vaccineInfoText");
   const v = vaccines.find(x => x.vaccineId === vid);
 
-  if (!v){
-    box.style.display = "none";
-    text.textContent = "";
-    return;
-  }
+  if (!v){ box.style.display = "none"; text.textContent = ""; return; }
+
   box.style.display = "block";
   const note = v.note ? `備註：${v.note}` : "備註：—";
   text.textContent = `價格：$${fmtMoney(v.price)}/劑\n${note}\n（所有疫苗施打皆需先由醫師評估）`;
@@ -412,14 +387,14 @@ function renderTimeGroups(groups, blockedMsg){
 
     times.forEach(t => {
       const opt = document.createElement("option");
-      opt.value = t; // ✅ 區間值
+      opt.value = t;
       opt.textContent = `${p} ${t}`;
       hiddenSelect.appendChild(opt);
 
       const chip = document.createElement("button");
       chip.type = "button";
       chip.className = "chip";
-      chip.textContent = t; // ✅ 顯示區間
+      chip.textContent = t;
       chip.addEventListener("click", () => {
         wrap.querySelectorAll(".chip").forEach(c => c.classList.remove("active"));
         chip.classList.add("active");
@@ -498,7 +473,6 @@ async function doCancel(){
     return;
   }
 
-  // ✅ 前端 LIFF 也送一則（最穩；就算後端 token 沒設也有訊息）
   try{
     const b = json.booking || {};
     const cancelMsg =
@@ -549,7 +523,7 @@ async function onSubmit(e){
     idCard: document.getElementById("idCard").value.trim(),
     vaccineId: decodeURIComponent(document.getElementById("vaccineId").value || ""),
     date: dateStr,
-    time: slot // ✅ 區間值
+    time: slot
   };
 
   const vaccineText = getSelectedVaccineText();
@@ -580,7 +554,6 @@ async function onSubmit(e){
       return;
     }
 
-    // ✅ 預約成功：前端 LIFF 立即送（後端 token 有設也會再 push 一次）
     try{
       const bookingMsg =
 `✅ 德昌小兒科診所｜預約成功
@@ -589,11 +562,11 @@ async function onSubmit(e){
 日期：${mdFromYmd(payload.date)}
 時間：${slotHm(payload.time)}
 
-提醒：請攜帶健保卡、現金；國小以下孩童請攜帶兒童健康手冊。`;
+提醒：預約日前一天晚上七點會推播預約確認。`;
       await liff.sendMessages([{ type:"text", text: bookingMsg }]);
     }catch(e){}
 
-    await Swal.fire("預約成功", "已完成預約！前一天晚上七點會再推播提醒。", "success");
+    await Swal.fire("預約成功", "已完成預約！預約日前一天晚上七點會再推播提醒。", "success");
     await refreshMyBookingUI();
   } finally {
     document.getElementById("btnSubmit").disabled = false;
@@ -608,7 +581,7 @@ btnGoBooking.addEventListener("click", () => { if (agreeEl.checked) showPage("pa
 
 document.getElementById("btnHelp").addEventListener("click", async () => {
   await Swal.fire("常見問題",
-    "1) 請從 LINE 官方入口開啟\n2) 若看不到時段：請先選日期（或該日未開放）\n3) 週五全日不開放、週日晚上不開放\n4) 休假日/國定假日可由 TimeRules 設定",
+    "1) 請從 LINE 官方入口開啟\n2) 若看不到時段：請先選日期（或該日未開放）\n3) 週五全日不開放、週日晚上不開放",
     "info"
   );
 });
@@ -625,10 +598,16 @@ document.getElementById("date").addEventListener("change", async (e) => {
 
 (async function main(){
   enforceDateWindow();
-  await initLIFF();
-  if (!lineUid) return;
-  await loadVaccines();
-  await refreshMyBookingUI();
+  try{
+    if (!LIFF_ID || LIFF_ID.includes("請填入")) { setStatus(false, "請先在 index.html 填入 LIFF_ID"); return; }
+    if (!GAS_EXEC_URL || GAS_EXEC_URL.includes("請填入")) { setStatus(false, "請先在 index.html 填入 GAS_EXEC_URL"); return; }
+    await initLIFF();
+    if (!lineUid) return;
+    await loadVaccines();
+    await refreshMyBookingUI();
+  }catch(err){
+    setStatus(false, "初始化失敗：" + String(err?.message || err));
+  }
 })();
 </script>
 </body>
