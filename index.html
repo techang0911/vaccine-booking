@@ -593,7 +593,7 @@ async function onSubmit(e){
       await liff.sendMessages([{ type:"text", text: bookingMsg }]);
     }catch(e){}
 
-    await Swal.fire("預約成功", "已完成預約！前一天晚上 19:00 會再推播提醒。", "success");
+    await Swal.fire("預約成功", "已完成預約！前一天晚上七點會再推播提醒。", "success");
     await refreshMyBookingUI();
   } finally {
     document.getElementById("btnSubmit").disabled = false;
